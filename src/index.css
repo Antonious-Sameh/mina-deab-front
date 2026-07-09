@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Cairo:wght@300;400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    
+    /* Primary: Calm Blue */
+    --primary: 215 70% 45%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary: Light Olive Green */
+    --secondary: 85 40% 45%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --accent: 210 40% 90%;
+    --accent-foreground: 215 70% 45%;
+    
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 16% 47%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    
+    --border: 214 32% 88%;
+    --input: 214 32% 91%;
+    --ring: 215 70% 45%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --radius: 0.75rem;
+  }
+  
+  .dark {
+    /* Professional Dark Mode Colors (Slate/Zinc vibe) */
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+    
+    --primary: 215 70% 55%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 85 40% 50%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 98%;
+    
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 98%;
+    
+    --border: 217 33% 15%;
+    --input: 217 33% 15%;
+    --ring: 215 70% 55%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  
+  html {
+    scroll-behavior: smooth;
+    direction: rtl;
+  }
+  
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Tajawal', 'Cairo', 'Noto Sans Arabic', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow-x: hidden;
+    text-align: right;
+    direction: rtl;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    text-wrap: balance;
+    font-weight: 700;
+  }
+  
+  p {
+    text-wrap: pretty;
+  }
+}

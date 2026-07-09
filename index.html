@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <meta name="theme-color" content="#080d1a" />
+    <meta name="background-color" content="#080d1a" />
+    <meta name="application-name" content="خطوة" />
+    <meta name="description" content="منصة خطوة التعليمية — دراسات اجتماعية وتاريخ" />
+
+    <!-- Apple PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="خطوة" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32"   href="/icons/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16"   href="/icons/icon-16x16.png" />
+    <link rel="shortcut icon"                          href="/icons/icon-96x96.png" />
+
+    <!-- Windows -->
+    <meta name="msapplication-TileColor" content="#080d1a" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    <meta name="msapplication-config"    content="none" />
+
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
+
+    <title>خطوة — منصة تعليمية</title>
+
+    <!-- Prevent white flash on dark theme -->
+    <style>
+      html,body{background:#080d1a;margin:0;padding:0}
+      #root{min-height:100vh}
+      #app-loader{
+        position:fixed;inset:0;background:#080d1a;
+        display:flex;align-items:center;justify-content:center;
+        z-index:9999;
+      }
+      .loader-ring{
+        width:44px;height:44px;
+        border:3px solid rgba(212,175,55,0.15);
+        border-top-color:#D4AF37;
+        border-radius:50%;
+        animation:spin .8s linear infinite;
+      }
+      @keyframes spin{to{transform:rotate(360deg)}}
+    </style>
+  </head>
+  <body>
+    <div id="app-loader"><div class="loader-ring"></div></div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+
+    <script>
+      // Hide loader after React mounts
+      window.addEventListener('DOMContentLoaded', function() {
+        var loader = document.getElementById('app-loader');
+        if (!loader) return;
+        setTimeout(function() {
+          loader.style.opacity = '0';
+          loader.style.transition = 'opacity 0.3s';
+          setTimeout(function() { if (loader.parentNode) loader.parentNode.removeChild(loader); }, 350);
+        }, 150);
+      });
+
+      // Register SW — vite-plugin-pwa (generateSW) يبني sw.js بدون ES modules
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(function(reg) {
+              // Check for updates every 30 min
+              setInterval(function() { reg.update(); }, 30 * 60 * 1000);
+
+              reg.addEventListener('updatefound', function() {
+                var newWorker = reg.installing;
+                if (!newWorker) return;
+                newWorker.addEventListener('statechange', function() {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  }
+                });
+              });
+            })
+            .catch(function() {
+              // SW registration failed — app still works, just without offline support
+              console.warn('[PWA] Service Worker registration failed — running without SW');
+            });
+
+          // Reload once when new SW takes control
+          var refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', function() {
+            if (!refreshing) {
+              refreshing = true;
+              window.location.reload();
+            }
+          });
+
+          // SW → App messages
+          navigator.serviceWorker.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'ASSET_NOT_FOUND') {
+              if ('caches' in window) {
+                caches.keys().then(function(keys) {
+                  return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+                }).then(function() { window.location.reload(); });
+              } else {
+                window.location.reload();
+              }
+            }
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
