@@ -58,6 +58,29 @@ export const attendanceAPI = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+// MONTHS (الحضور والفلوس — الشهور)
+// ══════════════════════════════════════════════════════════════════════════════
+export const monthsAPI = {
+  getAll:  (groupId)        => api.get('/months', { params: { group: groupId } }).then(getData),
+  create:  (data)           => api.post('/months', data).then(getData),
+  update:  (id, data)       => api.patch(`/months/${id}`, data).then(getData),
+  remove:  (id)             => api.delete(`/months/${id}`).then(getData),
+  getUnpaid: (groupId)      => api.get('/months/unpaid', { params: { group: groupId } }).then(getData),
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SESSIONS (الحضور والفلوس — الحصص)
+// ══════════════════════════════════════════════════════════════════════════════
+export const sessionsAPI = {
+  getAll:          (monthId)      => api.get('/sessions', { params: { month: monthId } }).then(getData),
+  create:          (data)         => api.post('/sessions', data).then(getData),
+  update:          (id, data)     => api.patch(`/sessions/${id}`, data).then(getData),
+  remove:          (id)           => api.delete(`/sessions/${id}`).then(getData),
+  getSheet:        (id)           => api.get(`/sessions/${id}/sheet`).then(getData),
+  submitAttendance:(id, records)  => api.post(`/sessions/${id}/attendance`, { records }).then(getData),
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // PAYMENTS
 // ══════════════════════════════════════════════════════════════════════════════
 export const paymentsAPI = {
