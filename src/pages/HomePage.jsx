@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link } from 'react-router-dom';
 import {
-  Users, BookOpen, Calendar, CreditCard, FileText,
+  Users, BookOpen, Calendar, FileText,
   ClipboardCheck, Award, Star, Loader2, TrendingUp, AlertCircle, MonitorPlay, StickyNote
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,7 +31,6 @@ function StatCard({ title, value, icon: Icon, color, bgColor, sub }) {
 const QUICK_LINKS = [
   { label: 'تسجيل الحضور',  to: '/attendance',        icon: ClipboardCheck, color: 'text-green-600',  bg: 'bg-green-50'   },
   { label: 'إدارة الطلاب',  to: '/students',           icon: Users,          color: 'text-primary',    bg: 'bg-primary/10' },
-  { label: 'المدفوعات',      to: '/payments',           icon: CreditCard,     color: 'text-orange-600', bg: 'bg-orange-50'  },
   { label: 'الدرجات',        to: '/teacher/grades',     icon: Award,          color: 'text-blue-600',   bg: 'bg-blue-50'    },
   { label: 'الامتحانات',     to: '/teacher/exams',      icon: FileText,       color: 'text-purple-600', bg: 'bg-purple-50'  },
   { label: 'النقاط',         to: '/teacher/points',     icon: Star,           color: 'text-yellow-600', bg: 'bg-yellow-50'  },

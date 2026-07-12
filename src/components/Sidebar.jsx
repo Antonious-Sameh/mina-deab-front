@@ -14,7 +14,6 @@ import {
   KeyRound as UsersRound,
   GraduationCap,
   ClipboardCheck,
-  Wallet,
   StickyNote,
   MonitorPlay,
 } from "lucide-react";
@@ -30,7 +29,6 @@ const TEACHER_GROUPS = [
       { path: "/groups", label: "المجموعات", icon: UsersRound },
       { path: "/students", label: "الطلاب", icon: GraduationCap },
       { path: "/attendance", label: "الحضور", icon: ClipboardCheck },
-      { path: "/payments", label: "الفلوس", icon: Wallet },
     ],
   },
   {

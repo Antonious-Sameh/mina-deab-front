@@ -307,6 +307,7 @@ function PaperExamSheet({ title, year, group, maxScore, onBack, onDeleted }) {
                 <tr>
                   <th className="px-4 py-2.5">#</th>
                   <th className="px-4 py-2.5">الطالب</th>
+                  <th className="px-4 py-2.5">ID</th>
                   <th className="px-4 py-2.5">الدرجة (من {maxScore})</th>
                   <th className="px-4 py-2.5">النسبة</th>
                 </tr>
@@ -319,6 +320,7 @@ function PaperExamSheet({ title, year, group, maxScore, onBack, onDeleted }) {
                     <tr key={row.student._id} className="hover:bg-muted/20">
                       <td className="px-4 py-2.5 text-muted-foreground">{i+1}</td>
                       <td className="px-4 py-2.5 font-bold">{row.student.name}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.student.studentId ?? '—'}</td>
                       <td className="px-4 py-2.5">
                         <Input
                           type="number" min="0" max={maxScore||999}

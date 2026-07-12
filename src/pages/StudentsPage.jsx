@@ -479,6 +479,7 @@ export default function StudentsPage() {
                               <thead className="bg-muted/50 text-muted-foreground">
                                 <tr>
                                   <th className="px-6 py-3 font-semibold">اسم الطالب</th>
+                                  <th className="px-6 py-3 font-semibold">ID</th>
                                   <th className="px-6 py-3 font-semibold">الكود</th>
                                   <th className="px-6 py-3 font-semibold">الحالة</th>
                                   <th className="px-6 py-3 font-semibold text-left">إجراءات</th>
@@ -488,6 +489,7 @@ export default function StudentsPage() {
                                 {grpStudents.map(student => (
                                   <tr key={student._id} className="hover:bg-background transition-colors">
                                     <td className="px-6 py-4 font-bold">{student.name}</td>
+                                    <td className="px-6 py-4 font-mono text-muted-foreground text-xs">{student.studentId ?? '—'}</td>
                                     <td className="px-6 py-4 font-mono text-muted-foreground text-xs">{student.codePlain}</td>
                                     <td className="px-6 py-4">
                                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${

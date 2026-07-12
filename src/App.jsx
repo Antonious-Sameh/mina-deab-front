@@ -18,7 +18,8 @@ import HomePage from '@/pages/HomePage.jsx';
 import GroupsPage from '@/pages/GroupsPage.jsx';
 import StudentsPage from '@/pages/StudentsPage.jsx';
 import AttendancePage from '@/pages/AttendancePage.jsx';
-import PaymentsPage from '@/pages/PaymentsPage.jsx';
+// صفحة الفلوس (الفريق) — تم إخفاؤها مؤقتاً، هيتم استبدالها بنظام جديد. الملف والمنطق لسه موجودين.
+// import PaymentsPage from '@/pages/PaymentsPage.jsx';
 import ExamsPage from '@/pages/teacher/ExamsPage.jsx';
 import GradesPage from '@/pages/teacher/GradesPage.jsx';
 import RankingsPage from '@/pages/teacher/RankingsPage.jsx';
@@ -85,7 +86,8 @@ function App() {
             <Route path="/groups" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><GroupsPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/students" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><StudentsPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/attendance" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AttendancePage /></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/payments" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><PaymentsPage /></ProtectedLayout></ProtectedRoute>} />
+            {/* صفحة الفلوس — مخفية مؤقتاً، هيتم استبدالها بنظام جديد */}
+            {/* <Route path="/payments" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><PaymentsPage /></ProtectedLayout></ProtectedRoute>} /> */}
             <Route path="/teacher/exams" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><ExamsPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/teacher/grades" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><GradesPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/teacher/rankings" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><RankingsPage /></ProtectedLayout></ProtectedRoute>} />
