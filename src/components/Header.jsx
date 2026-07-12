@@ -9,7 +9,7 @@ import api from '@/api/axios';
 
 const PAGE_TITLES = {
   '/teacher/home':'الرئيسية','/groups':'المجموعات','/students':'الطلاب',
-  '/attendance':'الحضور','/payments':'الفلوس','/teacher/exams':'الامتحانات',
+  '/attendance':'الحضور والفلوس','/payments':'الفلوس','/teacher/exams':'الامتحانات',
   '/teacher/grades':'الدرجات','/teacher/rankings':'ترتيب الطلاب',
   '/teacher/points':'النقاط','/teacher/reports':'التقارير',
   '/teacher/online':'أون لاين','/teacher/notes':'الملاحظات',

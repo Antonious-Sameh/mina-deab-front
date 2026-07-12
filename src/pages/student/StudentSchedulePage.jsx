@@ -10,6 +10,7 @@ const SCHEDULE_DEMO = {
   'third-prep':  [{ day:'الاثنين',  time:'4:00م - 7:00م', group:'مجموعة الأبطال' }, { day:'الخميس', time:'4:00م - 7:00م', group:'مجموعة الأبطال' }],
   'first-sec':   [{ day:'الثلاثاء', time:'6:00م - 8:00م', group:'مجموعة الصباح' }],
   'second-sec':  [{ day:'الجمعة',   time:'10:00ص - 1:00م', group:'مجموعة الإتقان' }],
+  'third-sec':   [{ day:'السبت',    time:'10:00ص - 1:00م', group:'مجموعة التفوق' }],
 };
 
 export default function StudentSchedulePage() {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { KeyRound, ArrowLeft, Eye, EyeOff, Phone, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, HelpCircle } from 'lucide-react'; // Removed unused Sigma and Binary
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext.jsx';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
+  // --- الحفاظ على اللوجيك الأصلي تماماً بدون أي تغيير ---
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [showCode, setShowCode] = useState(false);
@@ -47,76 +48,96 @@ export default function LoginPage() {
     const value = e.target.value.replace(/\s+/g, '').toUpperCase();
     setCode(value);
   };
+  // ----------------------------------------------------
 
   return (
     <>
       <Helmet>
-        <title>تسجيل الدخول | خطوة بلس</title>
+        <title>تسجيل الدخول | الإبداع في الرياضيات</title>
       </Helmet>
 
-      <div className="min-h-screen flex flex-col justify-between bg-gradient-to-b from-slate-50 to-blue-50/20 text-slate-900 px-4 antialiased selection:bg-blue-500/10 relative overflow-hidden">
+      {/* التصميم المطور (Premium) 
+        - تم الحفاظ على الخلفية والفوتر والنصوص.
+        - تم تكبير صورة المدرس بنسبة ~30% واستخدام aspect-square مع object-contain لضمان عدم القص.
+        - تم إزالة العناصر المشتتة (Sigma, Binary).
+        - تم تحسين جودة الكارد، الـ Input، والزر (Premium Look).
+      */}
+      <div className="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100 px-4 antialiased relative overflow-hidden selection:bg-indigo-500/30 font-sans">
         
-        {/* الخلفية الجمالية الدائرية */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none z-0">
-          <div className="absolute top-[-5%] left-[10%] w-[350px] h-[350px] bg-blue-500/[0.02] rounded-full blur-[60px]" />
-          <div className="absolute bottom-[15%] right-[10%] w-[350px] h-[350px] bg-blue-600/[0.02] rounded-full blur-[80px]" />
-        </div>
+        {/* شبكة هندسية دقيقة للخلفية (Math Grid Effect) - تم الحفاظ عليها */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-70 pointer-events-none z-0" />
 
-        <div className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative z-10">
-          <div className="sm:mx-auto sm:w-full sm:max-w-[420px]">
-            <Card className="border border-slate-200/60 bg-white shadow-[0_15px_40px_rgba(0,0,0,0.03)] rounded-3xl overflow-visible mt-12">
+        {/* تأثيرات ضوئية ملونة (أشعة الجبر والهندسة) - تم الحفاظ عليها */}
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none z-0" />
+        <div className="absolute bottom-[10%] left-[-10%] w-[400px] h-[400px] bg-violet-600/10 rounded-full blur-[100px] pointer-events-none z-0" />
+
+        <div className="flex-1 flex flex-col justify-center py-16 sm:px-6 lg:px-8 relative z-10">
+          <div className="sm:mx-auto sm:w-full sm:max-w-[460px]"> {/* تم تكبير الـ max-w قليلاً لتنفس التصميم */}
+            
+            {/* الكارت الزجاجي الحديث الاحترافي (Premium Upgrade)
+              - border أرق، shadow أعمق وأكثر نعومة، و blur أقل.
+            */}
+            <Card className="border border-slate-800/40 bg-slate-900/50 backdrop-blur-lg shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] rounded-3xl overflow-visible mt-28 relative transition-shadow duration-300">
               
-              {/* هيدر الكارت السفلي المنحني الأزرق */}
-              <div className="relative bg-gradient-to-b from-blue-600 to-blue-700 pt-10 pb-20 px-6 text-center text-white rounded-t-3xl overflow-hidden">
-                <div className="absolute inset-0 opacity-10 pointer-events-none">
-                  <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <path d="M0,0 C50,40 50,60 100,100 L100,0 Z" fill="currentColor" />
-                  </svg>
-                </div>
-                
-                <h1 className="relative z-10 text-2xl font-bold tracking-tight">
-                  خطوة 
-                </h1>
-                <p className="relative z-10 text-xs text-blue-100/80 mt-2 max-w-[280px] mx-auto leading-relaxed font-normal">
-                  منصة تعليمية لإدارة الدروس والاختبارات ومتابعة تقدم الطلاب بسهولة.
-                </p>
+              {/* تم حذف الأيقونات الرياضية العائمة المشتتة (Sigma/Binary) */}
 
-                {/* تماوج المنحنى السفلي للهيدر */}
-                <div className="absolute bottom-0 inset-x-0 w-full overflow-hidden leading-[0] fill-white">
-                  <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="relative block w-full h-[48px]">
-                    <path d="M0,0 C150,90 350,120 600,120 C850,120 1050,90 1200,0 L1200,120 L0,120 Z" />
-                  </svg>
-                </div>
-              </div>
-
-              {/* منطقة صورة المدرس المبتكرة (تتوسط المنحنى بامتياز) */}
-              <div className="relative flex justify-center h-10 z-20">
-                <div className="absolute -top-14 w-24 h-24 rounded-full p-1 bg-white shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:scale-105">
-                  <div className="w-full h-full rounded-full overflow-hidden border border-slate-100 bg-slate-50 relative group">
+              {/* الصورة الشخصية المدمجة ببرواز مضيء هندسي (التركيز الأساسي)
+                - تم تكبير المساحة بنسبة ~30% (w-40 h-40).
+                - تم استخدام object-contain لضمان عدم قص الوجه أو الأكتاف.
+                - إطار بسيط جداً (حلقة واحدة) مع glow احترافي.
+                - تمت إزالة التدرج اللوني المبالغ فيه.
+              */}
+              <div className="absolute -top-20 inset-x-0 flex justify-center z-20">
+                <div className="w-40 h-40 rounded-3xl p-1 bg-slate-800 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.6)] relative">
+                  {/* Glow خفيف واحترافي حول الصورة (Premium Glow) */}
+                  <div className="absolute inset-0 rounded-3xl bg-indigo-500/20 blur-xl opacity-80 pointer-events-none" />
+                  
+                  <div className="w-full h-full rounded-[21px] overflow-hidden bg-slate-950 relative group border-2 border-slate-700/50 flex items-center justify-center">
                     <img 
                       src="/teacher.jpg" 
-                      alt="صورة المدرس" 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      alt="صورة الأستاذ" 
+                      className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
                       loading="eager"
                     />
-                    {/* لمعة خفيفة تظهر عند التحويم فوق الصورة */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    {/* طبقة تفاعلية ناعمة عند الـ Hover */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
                 </div>
               </div>
 
-              {/* محتوى الفورم تم زيادة الـ pt ليناسب نزول الصورة */}
-              <CardContent className="pt-14 pb-10 px-6 sm:px-10">
-                <form id="login-form" onSubmit={handleSubmit} className="space-y-6">
+              {/* الهيدر الجديد المبتكر - تم زيادة الـ padding وتنسيق النصوص */}
+              <div className="relative pt-28 pb-6 px-8 text-center overflow-hidden">
+                <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-100 via-slate-100 to-indigo-100 bg-clip-text text-transparent">
+                  الإبداع في الرياضيات
+                </h1>
+                <p className="text-sm text-slate-400 mt-4 max-w-[340px] mx-auto leading-relaxed">
+                  دي مش رياضة دي مزيكا 🎻🎻
+                </p>
+              </div>
+
+              {/* منطقة إدخال الكود الفاخرة */}
+              <CardContent className="pt-8 pb-12 px-8 sm:px-12">
+                <form id="login-form" onSubmit={handleSubmit} className="space-y-8">
                   
-                  <div className="space-y-2">
-                    <Label 
-                      htmlFor="code" 
-                      className="text-xs font-medium text-slate-500 pr-0.5"
-                    >
-                      أدخل كود الدخول
-                    </Label>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center px-1">
+                      <Label 
+                        htmlFor="code" 
+                        className="text-xs font-medium text-slate-400 tracking-wider"
+                      >
+                        أدخل كود المرور الخاص بك
+                      </Label>
+                      {/* Math_Key badge - تم تبسيطها */}
+                      <span className="text-[10px] text-indigo-300 bg-indigo-950/50 px-3 py-1 rounded-full font-mono border border-indigo-900/50">
+                        Math_Key
+                      </span>
+                    </div>
                     
+                    {/* Input المطور (Premium Input)
+                      - h-16 ليعطي شعوراً بالفخامة.
+                      - text-3xl مع tracking متباعد.
+                      - focus animation أنعم وحدود أرق.
+                    */}
                     <div className="relative flex items-center group">
                       <Input
                         id="code"
@@ -125,7 +146,7 @@ export default function LoginPage() {
                         value={code}
                         onChange={handleInputChange}
                         disabled={loading}
-                        className="text-center text-xl font-semibold tracking-[0.15em] h-12 bg-slate-50/50 border border-slate-200 text-slate-900 focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:bg-white focus-visible:border-blue-500 transition-all rounded-xl placeholder:tracking-normal placeholder:font-normal placeholder:text-slate-300 pl-12 pr-4 shadow-sm group-hover:border-slate-300/90"
+                        className="text-center text-3xl font-bold tracking-[0.3em] h-16 bg-slate-950/80 border border-slate-800 text-indigo-50 focus-visible:ring-1 focus-visible:ring-indigo-500/80 focus-visible:border-indigo-600 transition-all rounded-2xl placeholder:tracking-normal placeholder:font-normal placeholder:text-slate-700 pl-16 pr-5 shadow-inner group-hover:border-slate-700/80 w-full"
                         dir="ltr"
                         autoFocus
                         autoComplete="current-password"
@@ -134,31 +155,38 @@ export default function LoginPage() {
                         aria-label="كود الدخول"
                       />
                       
+                      {/* زر إظهار/إخفاء الكود */}
                       <button
                         type="button"
                         onClick={() => setShowCode(!showCode)}
-                        className="absolute left-3.5 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100/80 active:bg-slate-200/60 transition-all rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="absolute left-5 p-2.5 text-slate-500 hover:text-indigo-200 hover:bg-slate-800/80 active:bg-slate-800 transition-all rounded-xl focus:outline-none"
                         aria-label={showCode ? "إخفاء الكود" : "إظهار الكود"}
                       >
-                        {showCode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showCode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
                     </div>
                   </div>
 
+                  {/* زر الدخول الجديد كلياً (Premium Button)
+                    - h-14 ليتناسب مع الـ input.
+                    - لون أزرق واحد (indigo-600)، مع hover ناعم.
+                    - micro-interaction عند الضغط.
+                    - glow خفيف يعبر عن الانطلاق.
+                  */}
                   <Button
                     type="submit"
-                    className="w-full h-12 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-sm transition-all duration-150 flex items-center justify-center gap-2 group"
+                    className="w-full h-14 text-lg font-bold bg-indigo-600 text-white hover:bg-indigo-500 active:scale-[0.98] rounded-2xl shadow-[0_6px_25px_-5px_rgba(79,70,229,0.4)] transition-all duration-200 flex items-center justify-center gap-3 group border border-indigo-700/50"
                     disabled={loading}
                   >
                     {loading ? (
-                      <span className="flex items-center gap-2" role="status" aria-live="polite">
-                        <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        <span>جارٍ تسجيل الدخول...</span>
+                      <span className="flex items-center gap-3" role="status" aria-live="polite">
+                        <span className="w-5 h-5 border-2 border-slate-400 border-t-white rounded-full animate-spin" />
+                        <span>جاري التحقق من المعطيات...</span>
                       </span>
                     ) : (
                       <>
-                        <span>تسجيل الدخول</span>
-                        <ArrowLeft className="h-4 w-4 transition-transform duration-150 group-hover:-translate-x-0.5 rtl:rotate-180" />
+                        <span>انطلق نحو الإبداع</span>
+                        <ArrowLeft className="h-5 w-5 transition-transform duration-300 ease-out group-hover:-translate-x-1.5 rtl:rotate-180 text-indigo-100" />
                       </>
                     )}
                   </Button>
@@ -168,13 +196,13 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* الفوتر الثابت والمحمي بالحقوق */}
-        <footer className="w-full py-6 text-center border-t border-slate-100 bg-transparent relative z-10">
-          <div className="max-w-md mx-auto flex flex-col items-center justify-center gap-1 px-4">
-            <p className="text-xs text-slate-400 font-normal">
-              &copy; 2026 خطوة . جميع الحقوق محفوظة.
+        {/* الفوتر الجديد المحدث - تم الحفاظ عليه مع تحسين طفيف للهوامش */}
+        <footer className="w-full py-8 text-center border-t border-slate-900 bg-slate-950/40 backdrop-blur-md relative z-10">
+          <div className="max-w-md mx-auto flex flex-col items-center justify-center gap-1.5 px-6">
+            <p className="text-xs text-slate-500 font-medium">
+              &copy; 2026 الإبداع في الرياضيات. جميع الحقوق محفوظة.
             </p>
-            <p className="text-[11px] text-slate-400/80 font-normal mt-0.5">
+            <p className="text-[11px] text-slate-600 font-normal">
               تطوير: المهندس أنطونيوس سامح
             </p>
           </div>

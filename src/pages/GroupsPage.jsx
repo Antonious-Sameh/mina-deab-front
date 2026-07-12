@@ -15,6 +15,7 @@ const ACADEMIC_YEARS = [
   { value: 'third-prep',  label: 'الصف الثالث الإعدادي', color: '#a855f7', bg: '#faf5ff' },
   { value: 'first-sec',   label: 'الصف الأول الثانوي',   color: '#0ea5e9', bg: '#f0f9ff' },
   { value: 'second-sec',  label: 'الصف الثاني الثانوي',  color: '#14b8a6', bg: '#f0fdfa' },
+  { value: 'third-sec',   label: 'الصف الثالث الثانوي',  color: '#f43f5e', bg: '#fff1f2' },
 ];
 
 const DAYS_OF_WEEK = [

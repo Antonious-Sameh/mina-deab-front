@@ -21,6 +21,7 @@ const ACADEMIC_YEARS = [
   { value:'third-prep',  label:'الصف الثالث الإعدادي' },
   { value:'first-sec',   label:'الصف الأول الثانوي'   },
   { value:'second-sec',  label:'الصف الثاني الثانوي'  },
+  { value:'third-sec',   label:'الصف الثالث الثانوي'  },
 ];
 
 const ALL_GROUPS = '__all__';

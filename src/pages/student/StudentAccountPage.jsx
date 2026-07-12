@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 
 const YEAR_LABELS = {
   'first-prep':'الصف الأول الإعدادي','second-prep':'الصف الثاني الإعدادي',
-  'third-prep':'الصف الثالث الإعدادي','first-sec':'الصف الأول الثانوي','second-sec':'الصف الثاني الثانوي',
+  'third-prep':'الصف الثالث الإعدادي','first-sec':'الصف الأول الثانوي','second-sec':'الصف الثاني الثانوي','third-sec':'الصف الثالث الثانوي',
 };
 
 function InfoRow({ icon: Icon, label, value }) {

@@ -7,6 +7,7 @@ export const ACADEMIC_YEARS = [
   { value: 'third-prep',  label: 'الصف الثالث الإعدادي', icon: '٣' },
   { value: 'first-sec',   label: 'الصف الأول الثانوي',   icon: '٤' },
   { value: 'second-sec',  label: 'الصف الثاني الثانوي',  icon: '٥' },
+  { value: 'third-sec',   label: 'الصف الثالث الثانوي',  icon: '٦' },
 ];
 
 export const ALL_STUDENTS = [

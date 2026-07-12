@@ -25,6 +25,7 @@ const ACADEMIC_YEARS = [
   { value:'third-prep',  label:'الصف الثالث الإعدادي' },
   { value:'first-sec',   label:'الصف الأول الثانوي'   },
   { value:'second-sec',  label:'الصف الثاني الثانوي'  },
+  { value:'third-sec',   label:'الصف الثالث الثانوي'  },
 ];
 const YEAR_MAP    = Object.fromEntries(ACADEMIC_YEARS.map(y=>[y.value,y.label]));
 const STATUS_LABELS = { draft:'مسودة', published:'منشور', closed:'مغلق' };

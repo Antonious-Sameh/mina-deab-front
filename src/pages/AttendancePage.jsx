@@ -1,15 +1,17 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   Check, X, Save, ClipboardCheck, Loader2, AlertCircle,
-  Calendar, Users, ChevronLeft, ChevronRight, RefreshCw
+  Users, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
+  Plus, Pencil, Trash2, CalendarDays, BookOpenCheck, CheckCircle2, Wallet,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { groupsAPI, attendanceAPI } from '@/api/services';
+import { groupsAPI, monthsAPI, sessionsAPI, paymentsAPI } from '@/api/services';
 
 const ACADEMIC_YEARS = [
   { value: 'first-prep',  label: 'الصف الأول الإعدادي'  },
@@ -17,31 +19,644 @@ const ACADEMIC_YEARS = [
   { value: 'third-prep',  label: 'الصف الثالث الإعدادي' },
   { value: 'first-sec',   label: 'الصف الأول الثانوي'   },
   { value: 'second-sec',  label: 'الصف الثاني الثانوي'  },
+  { value: 'third-sec',   label: 'الصف الثالث الثانوي'  },
 ];
-
-const toDateStr = (d) => d.toISOString().slice(0, 10);
-const today = toDateStr(new Date());
 
 function formatDateAr(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════════════════════════════════════════
+
+function MonthModal({ month, groupId, onClose, onSaved }) {
+  const isEdit = !!month;
+  const [name,   setName]   = useState(month?.name || '');
+  const [price,  setPrice]  = useState(month?.price ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!name.trim()) { toast.error('اكتب اسم الشهر'); return; }
+    if (price === '' || Number(price) < 0) { toast.error('أدخل سعر الشهر'); return; }
+    setSaving(true);
+    try {
+      let data;
+      if (isEdit) {
+        data = await monthsAPI.update(month._id, { name: name.trim(), price: Number(price) });
+        toast.success('تم تعديل الشهر ✓');
+      } else {
+        data = await monthsAPI.create({ groupId, name: name.trim(), price: Number(price) });
+        toast.success('تم إضافة الشهر ✓');
+      }
+      onSaved(data.month);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشلت العملية');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-card border rounded-2xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b">
+          <h3 className="font-bold">{isEdit ? 'تعديل الشهر' : 'إضافة شهر جديد'}</h3>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}><X className="h-4 w-4" /></Button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="space-y-1.5">
+            <Label>اسم الشهر <span className="text-destructive">*</span></Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="مثال: أكتوبر — أو — مراجعة — أو — شهر 1" autoFocus className="h-11" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>سعر الشهر (ج.م) <span className="text-destructive">*</span></Label>
+            <Input type="number" min="0" value={price} onChange={e => setPrice(e.target.value)} placeholder="مثال: 300" className="h-11 text-lg font-bold" />
+          </div>
+        </div>
+        <div className="flex gap-3 p-5 border-t">
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={saving}>إلغاء</Button>
+          <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            حفظ
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SessionModal({ session, monthId, onClose, onSaved }) {
+  const isEdit = !!session;
+  const [name,   setName]   = useState(session?.name || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!name.trim()) { toast.error('اكتب اسم الحصة'); return; }
+    setSaving(true);
+    try {
+      let data;
+      if (isEdit) {
+        data = await sessionsAPI.update(session._id, { name: name.trim() });
+        toast.success('تم تعديل اسم الحصة ✓');
+      } else {
+        data = await sessionsAPI.create({ monthId, name: name.trim() });
+        toast.success('تم إضافة الحصة ✓');
+      }
+      onSaved(data.session);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشلت العملية');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-card border rounded-2xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b">
+          <h3 className="font-bold">{isEdit ? 'تعديل اسم الحصة' : 'إضافة حصة جديدة'}</h3>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}><X className="h-4 w-4" /></Button>
+        </div>
+        <div className="p-5 space-y-3">
+          <Label>اسم الحصة <span className="text-destructive">*</span></Label>
+          <Input value={name} onChange={e => setName(e.target.value)} placeholder="مثال: حصة 1 — أو — مراجعة — أو — امتحان" autoFocus className="h-11" />
+        </div>
+        <div className="flex gap-3 p-5 border-t">
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={saving}>إلغاء</Button>
+          <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            حفظ
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Review / edit / delete a student's recorded installments for this month —
+// this is the only way to add a new payment once the month is already fully
+// paid (matches: "المدرس يعدل البيانات بنفسه").
+function PaymentEditModal({ studentId, studentName, monthName, onClose, onChanged }) {
+  const [loading,     setLoading]     = useState(true);
+  const [payment,     setPayment]     = useState(null);
+  const [editingInst, setEditingInst] = useState(null);
+  const [amount,      setAmount]      = useState('');
+  const [saving,      setSaving]      = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await paymentsAPI.getStudent(studentId);
+      const p = (data.payments || []).find(pp => pp.month === monthName);
+      setPayment(p || null);
+    } catch { toast.error('فشل تحميل بيانات الدفع'); }
+    finally { setLoading(false); }
+  }, [studentId, monthName]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleDelete = async (instId) => {
+    if (!window.confirm('حذف هذه الدفعة؟')) return;
+    try {
+      await paymentsAPI.deleteInstallment(payment._id, instId);
+      toast.success('تم الحذف');
+      await load();
+      onChanged();
+    } catch (err) { toast.error(err?.response?.data?.message || 'فشل الحذف'); }
+  };
+
+  const startEdit = (inst) => { setEditingInst(inst); setAmount(String(inst.amount)); };
+
+  const handleSaveEdit = async () => {
+    if (!amount || Number(amount) <= 0) { toast.error('أدخل مبلغاً صحيحاً'); return; }
+    setSaving(true);
+    try {
+      await paymentsAPI.updateInstallment(payment._id, editingInst._id, { amount: Number(amount) });
+      toast.success('تم التعديل ✓');
+      setEditingInst(null);
+      await load();
+      onChanged();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل التعديل');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-card border rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b shrink-0">
+          <div>
+            <h3 className="font-bold">دفعات {studentName}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">{monthName}</p>
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}><X className="h-4 w-4" /></Button>
+        </div>
+        <div className="p-5 space-y-3 overflow-y-auto">
+          {loading && <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}
+          {!loading && (!payment || !payment.installments?.length) && (
+            <p className="text-sm text-muted-foreground text-center py-6">لا توجد دفعات مسجلة بعد</p>
+          )}
+          {!loading && payment?.installments?.map((inst) => (
+            <div key={inst._id} className="border rounded-xl p-3">
+              {editingInst?._id === inst._id ? (
+                <div className="flex items-center gap-2">
+                  <Input type="number" min="1" value={amount} onChange={e => setAmount(e.target.value)} className="h-9" autoFocus />
+                  <Button size="sm" className="h-9 gap-1" onClick={handleSaveEdit} disabled={saving}>
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-9" onClick={() => setEditingInst(null)}>إلغاء</Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-bold">{inst.amount} ج.م</p>
+                    <p className="text-xs text-muted-foreground">{new Date(inst.paidAt).toLocaleDateString('ar-EG')}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => startEdit(inst)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => handleDelete(inst._id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LEVEL 3 — MONTHS
+// ══════════════════════════════════════════════════════════════════════════════
+
+function MonthsView({ group, onOpenMonth }) {
+  const [months,       setMonths]       = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [monthModal,   setMonthModal]   = useState(null); // 'new' | monthObj | null
+  const [unpaid,       setUnpaid]       = useState([]);
+  const [loadingUnpaid,setLoadingUnpaid]= useState(true);
+  const [unpaidOpen,   setUnpaidOpen]   = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await monthsAPI.getAll(group._id);
+      setMonths(data.months || []);
+    } catch { toast.error('فشل تحميل الشهور'); }
+    finally { setLoading(false); }
+  }, [group._id]);
+
+  const loadUnpaid = useCallback(async () => {
+    setLoadingUnpaid(true);
+    try {
+      const data = await monthsAPI.getUnpaid(group._id);
+      setUnpaid(data.students || []);
+    } catch { /* اختياري — لا نزعج المدرس برسالة خطأ هنا */ }
+    finally { setLoadingUnpaid(false); }
+  }, [group._id]);
+
+  useEffect(() => { load(); loadUnpaid(); }, [load, loadUnpaid]);
+
+  const handleDelete = async (month) => {
+    if (!window.confirm(`حذف شهر "${month.name}"؟ سيتم حذف كل الحصص بداخله (بيانات الحضور والمدفوعات القديمة تفضل محفوظة).`)) return;
+    try {
+      await monthsAPI.remove(month._id);
+      toast.success('تم حذف الشهر');
+      setMonths(prev => prev.filter(m => m._id !== month._id));
+    } catch (err) { toast.error(err?.response?.data?.message || 'فشل الحذف'); }
+  };
+
+  const totalUnpaid = unpaid.reduce((s, u) => s + u.totalRemaining, 0);
+
+  return (
+    <div className="space-y-4">
+      {!loadingUnpaid && unpaid.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl overflow-hidden">
+          <button className="w-full flex items-center justify-between gap-3 p-4" onClick={() => setUnpaidOpen(o => !o)}>
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-red-700 text-sm sm:text-base">{unpaid.length} طالب لسه عليهم فلوس</p>
+                <p className="text-xs text-red-600/80">إجمالي المتبقي: {totalUnpaid} ج.م</p>
+              </div>
+            </div>
+            {unpaidOpen ? <ChevronUp className="h-5 w-5 text-red-500 shrink-0" /> : <ChevronDown className="h-5 w-5 text-red-500 shrink-0" />}
+          </button>
+          {unpaidOpen && (
+            <div className="border-t border-red-200 divide-y divide-red-100 max-h-64 overflow-y-auto">
+              {unpaid.map(u => (
+                <div key={u.student._id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                  <span className="font-medium">{u.student.name}</span>
+                  <span className="font-bold text-red-600">{u.totalRemaining} ج.م</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-bold text-lg truncate">شهور {group.name}</h3>
+        <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setMonthModal('new')}><Plus className="h-4 w-4" />إضافة شهر</Button>
+      </div>
+
+      {loading && <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
+
+      {!loading && months.length === 0 && (
+        <div className="text-center py-14 bg-card border rounded-2xl border-dashed">
+          <CalendarDays className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-30" />
+          <p className="text-muted-foreground">لا توجد شهور بعد — ابدأ بإضافة شهر جديد</p>
+        </div>
+      )}
+
+      {!loading && months.length > 0 && (
+        <div className="grid sm:grid-cols-2 gap-3">
+          {months.map(m => (
+            <div
+              key={m._id}
+              className="bg-card border rounded-2xl p-4 flex items-center gap-3 hover:shadow-sm cursor-pointer transition-all"
+              onClick={() => onOpenMonth(m)}
+            >
+              <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <CalendarDays className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold truncate">{m.name}</p>
+                <p className="text-xs text-muted-foreground">{m.price} ج.م / شهر</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setMonthModal(m)}><Pencil className="h-3.5 w-3.5" /></Button>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => handleDelete(m)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              </div>
+              <ChevronLeft className="h-4 w-4 text-muted-foreground shrink-0" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {monthModal && (
+        <MonthModal
+          month={monthModal === 'new' ? null : monthModal}
+          groupId={group._id}
+          onClose={() => setMonthModal(null)}
+          onSaved={(month) => {
+            setMonthModal(null);
+            setMonths(prev => {
+              const exists = prev.some(m => m._id === month._id);
+              return exists ? prev.map(m => (m._id === month._id ? month : m)) : [...prev, month];
+            });
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LEVEL 4 — SESSIONS (حصص)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function SessionsView({ month, group, onBack, onOpenSession }) {
+  const [sessions,     setSessions]     = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [sessionModal, setSessionModal] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await sessionsAPI.getAll(month._id);
+      setSessions(data.sessions || []);
+    } catch { toast.error('فشل تحميل الحصص'); }
+    finally { setLoading(false); }
+  }, [month._id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleDelete = async (session) => {
+    if (!window.confirm(`حذف حصة "${session.name}"؟`)) return;
+    try {
+      await sessionsAPI.remove(session._id);
+      toast.success('تم حذف الحصة');
+      setSessions(prev => prev.filter(s => s._id !== session._id));
+    } catch (err) { toast.error(err?.response?.data?.message || 'فشل الحذف'); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={onBack}><ChevronRight className="h-4 w-4" />الشهور</Button>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-extrabold text-lg truncate">{month.name}</h3>
+          <p className="text-xs text-muted-foreground">{month.price} ج.م / شهر — {group.name}</p>
+        </div>
+        <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setSessionModal('new')}><Plus className="h-4 w-4" />إضافة حصة</Button>
+      </div>
+
+      {loading && <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
+
+      {!loading && sessions.length === 0 && (
+        <div className="text-center py-14 bg-card border rounded-2xl border-dashed">
+          <BookOpenCheck className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-30" />
+          <p className="text-muted-foreground">لا توجد حصص بعد — ابدأ بإضافة حصة جديدة</p>
+        </div>
+      )}
+
+      {!loading && sessions.length > 0 && (
+        <div className="space-y-2">
+          {sessions.map(s => (
+            <div
+              key={s._id}
+              className="bg-card border rounded-xl p-4 flex items-center gap-3 hover:shadow-sm cursor-pointer transition-all"
+              onClick={() => onOpenSession(s)}
+            >
+              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                <BookOpenCheck className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold truncate">{s.name}</p>
+                <p className="text-xs text-muted-foreground">{formatDateAr(s.date)}</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setSessionModal(s)}><Pencil className="h-3.5 w-3.5" /></Button>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => handleDelete(s)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              </div>
+              <ChevronLeft className="h-4 w-4 text-muted-foreground shrink-0" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {sessionModal && (
+        <SessionModal
+          session={sessionModal === 'new' ? null : sessionModal}
+          monthId={month._id}
+          onClose={() => setSessionModal(null)}
+          onSaved={(session) => {
+            setSessionModal(null);
+            setSessions(prev => {
+              const exists = prev.some(s => s._id === session._id);
+              return exists ? prev.map(s => (s._id === session._id ? session : s)) : [...prev, session];
+            });
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LEVEL 5 — SESSION SHEET (الطالب | ID | حضور | غياب | دفع | باقي)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function SessionSheetView({ session, month, group, onBack }) {
+  const [sheet,      setSheet]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [savingId,   setSavingId]   = useState(null);
+  const [payAmounts, setPayAmounts] = useState({});
+  const [payingId,   setPayingId]   = useState(null);
+  const [editPayment,setEditPayment]= useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await sessionsAPI.getSheet(session._id);
+      setSheet(data.sheet || []);
+    } catch { toast.error('فشل تحميل الكشف'); }
+    finally { setLoading(false); }
+  }, [session._id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const mark = async (studentId, status) => {
+    setSavingId(studentId);
+    setSheet(prev => prev.map(r => (r.student._id === studentId ? { ...r, status } : r)));
+    try {
+      await sessionsAPI.submitAttendance(session._id, [{ studentId, status }]);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل حفظ الحضور');
+      load();
+    } finally { setSavingId(null); }
+  };
+
+  const handlePay = async (row) => {
+    const amountStr = payAmounts[row.student._id];
+    const amount = Number(amountStr);
+    if (!amountStr || amount <= 0) { toast.error('أدخل مبلغاً صحيحاً'); return; }
+    setPayingId(row.student._id);
+    try {
+      let paymentId = row.payment.paymentId;
+      if (!paymentId) {
+        const createdData = await paymentsAPI.create({
+          studentId: row.student._id, month: month.name,
+          requiredAmount: month.price, groupId: group._id,
+        });
+        paymentId = createdData.payment._id;
+      }
+      const data = await paymentsAPI.addInstallment(paymentId, { amount });
+      const p = data.payment;
+      setSheet(prev => prev.map(r => (r.student._id === row.student._id ? {
+        ...r,
+        payment: {
+          paymentId:       p._id,
+          requiredAmount:  p.requiredAmount,
+          paidAmount:      p.paidAmount,
+          remainingAmount: Math.max(0, p.requiredAmount - p.paidAmount),
+          isPaid:          p.paidAmount >= p.requiredAmount,
+        },
+      } : r)));
+      setPayAmounts(prev => ({ ...prev, [row.student._id]: '' }));
+      toast.success('تم تسجيل الدفعة ✓');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل تسجيل الدفعة');
+    } finally { setPayingId(null); }
+  };
+
+  const presentCount = sheet.filter(r => r.status === 'present').length;
+  const absentCount  = sheet.filter(r => r.status === 'absent').length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={onBack}><ChevronRight className="h-4 w-4" />الحصص</Button>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-extrabold text-lg truncate">{session.name}</h3>
+          <p className="text-xs text-muted-foreground">{month.name} — {formatDateAr(session.date)}</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs sm:text-sm shrink-0">
+          <span className="flex items-center gap-1 bg-green-500/10 text-green-600 rounded-lg px-2.5 py-1 font-bold"><Check className="h-3.5 w-3.5" />{presentCount}</span>
+          <span className="flex items-center gap-1 bg-red-500/10 text-red-600 rounded-lg px-2.5 py-1 font-bold"><X className="h-3.5 w-3.5" />{absentCount}</span>
+        </div>
+      </div>
+
+      {loading && <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
+
+      {!loading && sheet.length === 0 && (
+        <div className="text-center py-14 bg-card border rounded-2xl border-dashed">
+          <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-30" />
+          <p className="text-muted-foreground">لا يوجد طلاب في هذه المجموعة</p>
+        </div>
+      )}
+
+      {!loading && sheet.length > 0 && (
+        <Card className="border shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-right">
+              <thead className="bg-muted/30 text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2.5">#</th>
+                  <th className="px-3 py-2.5">الطالب</th>
+                  <th className="px-3 py-2.5">ID</th>
+                  <th className="px-3 py-2.5 text-center">حضور</th>
+                  <th className="px-3 py-2.5 text-center">غياب</th>
+                  <th className="px-3 py-2.5">دفع</th>
+                  <th className="px-3 py-2.5">باقي</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {sheet.map((row, i) => {
+                  const isPresent = row.status === 'present';
+                  const isAbsent  = row.status === 'absent';
+                  const isPaid    = row.payment.isPaid;
+                  const busy      = savingId === row.student._id;
+                  return (
+                    <tr key={row.student._id} className="hover:bg-muted/20">
+                      <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
+                      <td className="px-3 py-2.5 font-bold">{row.student.name}</td>
+                      <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">{row.student.studentId ?? '—'}</td>
+                      <td className="px-3 py-2.5 text-center">
+                        <button
+                          disabled={busy}
+                          onClick={() => mark(row.student._id, 'present')}
+                          className={`w-9 h-9 rounded-lg inline-flex items-center justify-center transition-all disabled:opacity-50 ${
+                            isPresent ? 'bg-green-500 text-white shadow-sm' : 'border border-green-500/30 text-green-600 hover:bg-green-500/10'
+                          }`}
+                        ><Check className="h-4 w-4 stroke-[2.5]" /></button>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <button
+                          disabled={busy}
+                          onClick={() => mark(row.student._id, 'absent')}
+                          className={`w-9 h-9 rounded-lg inline-flex items-center justify-center transition-all disabled:opacity-50 ${
+                            isAbsent ? 'bg-red-500 text-white shadow-sm' : 'border border-red-500/30 text-red-600 hover:bg-red-500/10'
+                          }`}
+                        ><X className="h-4 w-4 stroke-[2.5]" /></button>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {isPaid ? (
+                          <button
+                            className="flex items-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 rounded-lg px-2.5 py-1.5 hover:bg-green-100 transition-colors"
+                            onClick={() => setEditPayment({ studentId: row.student._id, studentName: row.student.name })}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" /> مدفوع بالكامل
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              type="number" min="1" placeholder="المبلغ"
+                              value={payAmounts[row.student._id] || ''}
+                              onChange={e => setPayAmounts(prev => ({ ...prev, [row.student._id]: e.target.value }))}
+                              className="w-24 h-8 text-xs"
+                            />
+                            <Button
+                              size="sm" className="h-8 px-2.5 text-xs gap-1"
+                              disabled={payingId === row.student._id}
+                              onClick={() => handlePay(row)}
+                            >
+                              {payingId === row.student._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wallet className="h-3 w-3" />}
+                              دفع
+                            </Button>
+                            {row.payment.paidAmount > 0 && (
+                              <button
+                                className="text-muted-foreground hover:text-foreground"
+                                onClick={() => setEditPayment({ studentId: row.student._id, studentName: row.student.name })}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className={`font-bold text-sm ${row.payment.remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {row.payment.remainingAmount} ج.م
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {editPayment && (
+        <PaymentEditModal
+          studentId={editPayment.studentId}
+          studentName={editPayment.studentName}
+          monthName={month.name}
+          onClose={() => setEditPayment(null)}
+          onChanged={load}
+        />
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MAIN PAGE
+// ══════════════════════════════════════════════════════════════════════════════
+
 export default function AttendancePage() {
   const [selectedYear,  setSelectedYear]  = useState('');
-  const [selectedGroup, setSelectedGroup] = useState('');
-  const [selectedDate,  setSelectedDate]  = useState(today);
-  const [attendance,    setAttendance]    = useState({});
-  const [saving,        setSaving]        = useState(false);
-
   const [groups,        setGroups]        = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState('');
 
-  const [sheet,         setSheet]         = useState([]);
-  const [loadingSheet,  setLoadingSheet]  = useState(false);
-  const [sheetError,    setSheetError]    = useState(null);
+  const [openMonth,   setOpenMonth]   = useState(null);
+  const [openSession, setOpenSession] = useState(null);
 
-  // ── Load groups when year changes ─────────────────────────────────────────
   useEffect(() => {
     if (!selectedYear) { setGroups([]); return; }
     setLoadingGroups(true);
@@ -51,189 +666,55 @@ export default function AttendancePage() {
       .finally(() => setLoadingGroups(false));
   }, [selectedYear]);
 
-  // ── Load attendance sheet when group or date changes ─────────────────────
-  useEffect(() => {
-    if (!selectedGroup) { setSheet([]); setAttendance({}); return; }
-    setLoadingSheet(true);
-    setSheetError(null);
-    attendanceAPI.getSheet(selectedGroup, selectedDate)
-      .then((d) => {
-        setSheet(d.sheet || []);
-        const pre = {};
-        (d.sheet || []).forEach((r) => {
-          if (r.status) pre[r.student._id] = r.status;
-        });
-        setAttendance(pre);
-      })
-      .catch(() => setSheetError('فشل تحميل كشف الحضور'))
-      .finally(() => setLoadingSheet(false));
-  }, [selectedGroup, selectedDate]);
-
   const handleYearChange = (val) => {
     setSelectedYear(val);
     setSelectedGroup('');
-    setSheet([]);
-    setAttendance({});
+    setOpenMonth(null);
+    setOpenSession(null);
   };
 
-  const mark = (studentId, status) => {
-    setAttendance((prev) => {
-      // toggle: click same button again → unmark
-      if (prev[studentId] === status) {
-        const next = { ...prev };
-        delete next[studentId];
-        return next;
-      }
-      return { ...prev, [studentId]: status };
-    });
+  const handleGroupChange = (val) => {
+    setSelectedGroup(val);
+    setOpenMonth(null);
+    setOpenSession(null);
   };
 
-  const markAll = (status) => {
-    const all = {};
-    sheet.forEach(r => { all[r.student._id] = status; });
-    setAttendance(all);
-  };
-
-  const handleSave = async () => {
-    if (!selectedGroup) return;
-    const records = sheet.map((r) => ({
-      studentId: r.student._id,
-      status:    attendance[r.student._id] || 'absent',
-    }));
-    setSaving(true);
-    try {
-      await attendanceAPI.bulkSubmit({ groupId: selectedGroup, date: selectedDate, records });
-      toast.success('تم حفظ كشف الحضور بنجاح ✓');
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'فشل حفظ الكشف');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const changeDate = (days) => {
-    const d = new Date(selectedDate + 'T00:00:00');
-    d.setDate(d.getDate() + days);
-    if (toDateStr(d) <= today) setSelectedDate(toDateStr(d));
-  };
-
-  const markedCount  = Object.keys(attendance).length;
-  const presentCount = Object.values(attendance).filter((v) => v === 'present').length;
-  const absentCount  = Object.values(attendance).filter((v) => v === 'absent').length;
-  const unmarkedCount = sheet.length - markedCount;
-  const allMarked = sheet.length > 0 && markedCount === sheet.length;
-
-  const selectedGroupData = groups.find(g => g._id === selectedGroup);
+  const groupObj = groups.find(g => g._id === selectedGroup);
 
   return (
     <>
-      <Helmet><title>تسجيل الحضور | نظام المعلم</title></Helmet>
+      <Helmet><title>الحضور والفلوس | نظام المعلم</title></Helmet>
 
-      <div className="p-3 sm:p-6 max-w-4xl mx-auto space-y-4 sm:space-y-5 select-none" dir="rtl">
+      <div className="p-3 sm:p-6 max-w-4xl mx-auto space-y-4 sm:space-y-5" dir="rtl">
         {/* Header */}
-        <div className="bg-gradient-to-br from-card to-muted/30 p-4 sm:p-5 rounded-2xl border shadow-sm transition-all">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight mb-1">كشف الحضور والغياب</h2>
-              <p className="text-muted-foreground text-xs sm:text-sm">سجّل حضور الطلاب لكل مجموعة بسهولة</p>
-            </div>
-            {sheet.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto text-xs sm:text-sm border-t sm:border-t-0 pt-3 sm:pt-0 border-border/60">
-                <span className="flex items-center gap-1.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded-xl px-3 py-1.5 font-bold border border-green-500/20 shadow-sm">
-                  <Check className="h-3.5 w-3.5 stroke-[2.5]" /> {presentCount} حضر
-                </span>
-                <span className="flex items-center gap-1.5 bg-red-500/10 text-red-600 dark:text-red-400 rounded-xl px-3 py-1.5 font-bold border border-red-500/20 shadow-sm">
-                  <X className="h-3.5 w-3.5 stroke-[2.5]" /> {absentCount} غاب
-                </span>
-                {unmarkedCount > 0 && (
-                  <span className="flex items-center gap-1.5 bg-muted text-muted-foreground rounded-xl px-3 py-1.5 font-bold border shadow-sm">
-                    {unmarkedCount} لم يُسجَّل
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+        <div className="bg-gradient-to-br from-card to-muted/30 p-4 sm:p-5 rounded-2xl border shadow-sm">
+          <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight mb-1">الحضور والفلوس</h2>
+          <p className="text-muted-foreground text-xs sm:text-sm">سجّل حضور الطلاب ومدفوعاتهم لكل مجموعة بسهولة</p>
         </div>
 
         {/* Filters */}
         <Card className="border shadow-sm rounded-2xl overflow-hidden">
-          <CardContent className="p-4 sm:p-5 space-y-4">
+          <CardContent className="p-4 sm:p-5">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-xs sm:text-sm font-bold text-foreground/80">السنة الدراسية</label>
+                <Label className="text-xs sm:text-sm font-bold text-foreground/80">السنة الدراسية</Label>
                 <Select value={selectedYear} onValueChange={handleYearChange}>
-                  <SelectTrigger className="h-11 rounded-xl bg-background border-border/80 focus:ring-2 focus:ring-primary/20">
-                    <SelectValue placeholder="اختر السنة الدراسية..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {ACADEMIC_YEARS.map((y) => (
-                      <SelectItem key={y.value} value={y.value} className="text-right">{y.label}</SelectItem>
-                    ))}
+                  <SelectTrigger className="h-11"><SelectValue placeholder="اختر السنة الدراسية..." /></SelectTrigger>
+                  <SelectContent>
+                    {ACADEMIC_YEARS.map(y => <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs sm:text-sm font-bold text-foreground/80">المجموعة</label>
-                <Select value={selectedGroup} onValueChange={setSelectedGroup} disabled={!selectedYear || loadingGroups}>
-                  <SelectTrigger className="h-11 rounded-xl bg-background border-border/80 focus:ring-2 focus:ring-primary/20 disabled:opacity-50">
-                    <SelectValue placeholder={loadingGroups ? 'جاري التحميل...' : 'اختر المجموعة...'} />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {groups.map((g) => (
-                      <SelectItem key={g._id} value={g._id}>
-                        <div className="flex items-center gap-2 justify-between w-full">
-                          <span className="font-medium">{g.name}</span>
-                          {g.studentCount > 0 && (
-                            <Badge variant="outline" className="text-[10px] sm:text-xs font-normal px-1.5 py-0 bg-muted/40">
-                              {g.studentCount} طالب
-                            </Badge>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
+                <Label className="text-xs sm:text-sm font-bold text-foreground/80">المجموعة</Label>
+                <Select value={selectedGroup} onValueChange={handleGroupChange} disabled={!selectedYear || loadingGroups}>
+                  <SelectTrigger className="h-11 disabled:opacity-50"><SelectValue placeholder={loadingGroups ? 'جاري التحميل...' : 'اختر المجموعة...'} /></SelectTrigger>
+                  <SelectContent>
+                    {groups.map(g => <SelectItem key={g._id} value={g._id}>{g.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-
-            {/* Date selector */}
-            {selectedGroup && (
-              <div className="space-y-2 border-t pt-3 border-border/50">
-                <label className="text-xs sm:text-sm font-bold text-foreground/80 flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-primary" /> تاريخ الكشف
-                </label>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline" size="icon" className="h-11 w-11 shrink-0 rounded-xl border-border/80 active:scale-95 transition-transform"
-                    onClick={() => changeDate(-1)}
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </Button>
-                  <div className="flex-1 relative">
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      max={today}
-                      onChange={e => setSelectedDate(e.target.value)}
-                      className="w-full h-11 border border-border/80 rounded-xl px-3 text-sm bg-background text-center font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
-                    />
-                  </div>
-                  <Button
-                    variant="outline" size="icon" className="h-11 w-11 shrink-0 rounded-xl border-border/80 active:scale-95 transition-transform"
-                    onClick={() => changeDate(1)}
-                    disabled={selectedDate >= today}
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </Button>
-                  {selectedDate !== today && (
-                    <Button variant="secondary" size="sm" className="h-11 px-3 gap-1.5 shrink-0 rounded-xl font-bold active:scale-95 transition-transform text-xs" onClick={() => setSelectedDate(today)}>
-                      <RefreshCw className="h-3.5 w-3.5" /> اليوم
-                    </Button>
-                  )}
-                </div>
-                <p className="text-[11px] sm:text-xs text-muted-foreground font-medium pr-1">{formatDateAr(selectedDate)}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -248,153 +729,19 @@ export default function AttendancePage() {
         {selectedYear && !selectedGroup && !loadingGroups && (
           <div className="text-center p-10 sm:p-14 bg-card border rounded-2xl border-dashed shadow-sm">
             <Users className="h-10 sm:h-12 w-10 sm:w-12 text-muted-foreground mx-auto mb-3 opacity-30" />
-            <h3 className="text-sm sm:text-lg font-bold text-muted-foreground">اختر المجموعة لعرض الكشف</h3>
+            <h3 className="text-sm sm:text-lg font-bold text-muted-foreground">اختر المجموعة للمتابعة</h3>
           </div>
         )}
 
-        {/* Loading sheet */}
-        {loadingSheet && (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+        {/* Levels 3 → 5 */}
+        {selectedGroup && groupObj && !openMonth && (
+          <MonthsView group={groupObj} onOpenMonth={setOpenMonth} />
         )}
-
-        {/* Error */}
-        {sheetError && (
-          <div className="flex items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm font-medium">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            <p>{sheetError}</p>
-          </div>
+        {selectedGroup && groupObj && openMonth && !openSession && (
+          <SessionsView month={openMonth} group={groupObj} onBack={() => setOpenMonth(null)} onOpenSession={setOpenSession} />
         )}
-
-        {/* Sheet */}
-        {!loadingSheet && !sheetError && sheet.length > 0 && (
-          <div className="space-y-3">
-            {/* Controls bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-card border rounded-2xl px-4 py-3 shadow-sm">
-              <div className="flex items-center gap-2 justify-between w-full sm:w-auto">
-                <span className="font-black text-sm sm:text-base">{selectedGroupData?.name}</span>
-                <Badge variant="secondary" className="rounded-lg font-bold px-2.5 py-0.5">{sheet.length} طالب</Badge>
-              </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <Button
-                  size="sm" variant="outline"
-                  className="flex-1 sm:flex-initial gap-1 h-9 text-xs border-green-500/30 text-green-600 bg-green-500/5 hover:bg-green-500/10 rounded-xl font-bold transition-all"
-                  onClick={() => markAll('present')}
-                >
-                  <Check className="h-3.5 w-3.5 stroke-[2.5]" /> الكل حضر
-                </Button>
-                <Button
-                  size="sm" variant="outline"
-                  className="flex-1 sm:flex-initial gap-1 h-9 text-xs border-red-500/30 text-red-600 bg-red-500/5 hover:bg-red-500/10 rounded-xl font-bold transition-all"
-                  onClick={() => markAll('absent')}
-                >
-                  <X className="h-3.5 w-3.5 stroke-[2.5]" /> الكل غاب
-                </Button>
-                <Button
-                  size="sm"
-                  className="hidden sm:flex gap-1.5 h-9 text-xs rounded-xl font-bold shadow-sm"
-                  disabled={saving || sheet.length === 0}
-                  onClick={handleSave}
-                >
-                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  {saving ? 'جاري الحفظ...' : `حفظ الكشف (${markedCount}/${sheet.length})`}
-                </Button>
-              </div>
-            </div>
-
-            {/* Student cards */}
-            <div className="grid gap-2">
-              {sheet.map(({ student }, idx) => {
-                const status = attendance[student._id];
-                const isPresent = status === 'present';
-                const isAbsent  = status === 'absent';
-                return (
-                  <div
-                    key={student._id}
-                    className={`flex items-center rounded-xl border transition-all duration-200 overflow-hidden ${
-                      isPresent ? 'border-green-500/40 bg-green-500/[0.04] dark:bg-green-500/[0.02] shadow-sm' :
-                      isAbsent  ? 'border-red-500/40 bg-red-500/[0.04] dark:bg-red-500/[0.02] shadow-sm' :
-                                  'border-border/80 bg-card hover:border-border'
-                    }`}
-                  >
-                    {/* Index */}
-                    <div className={`w-8 sm:w-10 shrink-0 flex items-center justify-center self-stretch text-xs sm:text-sm font-black transition-colors ${
-                      isPresent ? 'bg-green-500 text-white' :
-                      isAbsent  ? 'bg-red-500   text-white' :
-                                  'bg-muted/60  text-muted-foreground border-l border-border/40'
-                    }`}>
-                      {idx + 1}
-                    </div>
-
-                    {/* Name & Info */}
-                    <div className="flex-1 px-3 sm:px-4 py-2.5 min-w-0">
-                      <p className="font-bold text-sm sm:text-base text-foreground truncate leading-tight">{student.name}</p>
-                      <p className="text-[10px] sm:text-xs font-mono text-muted-foreground/80 mt-0.5 tracking-wider">#{student.code}</p>
-                    </div>
-
-                    {/* Status badge - Hidden or subtle on mobile to save space */}
-                    <div className="px-1 sm:px-2 shrink-0 hidden xs:block">
-                      {isPresent && <span className="text-[10px] sm:text-xs font-extrabold text-green-600 bg-green-500/10 rounded-lg px-2 py-1 border border-green-500/10">حضر ✓</span>}
-                      {isAbsent  && <span className="text-[10px] sm:text-xs font-extrabold text-red-600 bg-red-500/10 rounded-lg px-2 py-1 border border-red-500/10">غاب ✗</span>}
-                    </div>
-
-                    {/* Action buttons (Highly optimized for Mobile tap targets) */}
-                    <div className="flex items-center gap-1.5 px-2 sm:px-3 py-2 shrink-0">
-                      <button
-                        onClick={() => mark(student._id, 'present')}
-                        className={`flex items-center justify-center gap-1 w-14 sm:w-20 h-9 sm:h-10 rounded-lg font-black text-xs transition-all active:scale-95 ${
-                          isPresent
-                            ? 'bg-green-500 text-white shadow-md shadow-green-500/20'
-                            : 'border border-green-500/30 text-green-600 bg-green-500/[0.02] hover:bg-green-500/10'
-                        }`}
-                      >
-                        <Check className="h-3.5 w-3.5 stroke-[2.5]" />
-                        <span className="hidden sm:inline">حضر</span>
-                      </button>
-                      <button
-                        onClick={() => mark(student._id, 'absent')}
-                        className={`flex items-center justify-center gap-1 w-14 sm:w-20 h-9 sm:h-10 rounded-lg font-black text-xs transition-all active:scale-95 ${
-                          isAbsent
-                            ? 'bg-red-500 text-white shadow-md shadow-red-500/20'
-                            : 'border border-red-500/30 text-red-600 bg-red-500/[0.02] hover:bg-red-500/10'
-                        }`}
-                      >
-                        <X className="h-3.5 w-3.5 stroke-[2.5]" />
-                        <span className="hidden sm:inline">غاب</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Bottom save button (Enhanced Native App Sticky feel for Mobile) */}
-            <div className="sticky bottom-3 sm:bottom-4 left-0 right-0 z-40 flex justify-center pt-4 pb-2 bg-gradient-to-t from-background via-background/90 to-transparent px-2 sm:px-0">
-              <Button
-                size="lg"
-                className="w-full sm:w-auto gap-2 shadow-xl shadow-primary/20 px-8 py-6 sm:py-5 rounded-xl font-bold text-sm sm:text-base transition-transform active:scale-[0.98]"
-                disabled={saving || sheet.length === 0}
-                onClick={handleSave}
-              >
-                {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                <span>{saving ? 'جاري حفظ البيانات...' : `حفظ كشف الحضور — ${markedCount} من ${sheet.length}`}</span>
-                {!allMarked && markedCount > 0 && (
-                  <span className="text-[10px] sm:text-xs opacity-80 font-normal border-r pr-1.5 border-white/20">
-                    ({unmarkedCount} غائب تلقائياً)
-                  </span>
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Empty group */}
-        {!loadingSheet && !sheetError && selectedGroup && sheet.length === 0 && !loadingGroups && (
-          <div className="text-center p-12 sm:p-14 bg-card border rounded-2xl border-dashed shadow-sm">
-            <Users className="h-9 sm:h-10 w-9 sm:w-10 text-muted-foreground mx-auto mb-3 opacity-30" />
-            <p className="font-bold text-muted-foreground text-sm sm:text-base">لا يوجد طلاب مسجلين في هذه المجموعة</p>
-          </div>
+        {selectedGroup && groupObj && openMonth && openSession && (
+          <SessionSheetView session={openSession} month={openMonth} group={groupObj} onBack={() => setOpenSession(null)} />
         )}
       </div>
     </>

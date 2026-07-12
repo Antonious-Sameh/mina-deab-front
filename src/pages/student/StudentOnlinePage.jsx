@@ -18,6 +18,7 @@ const YEAR_LABELS = {
   'third-prep':  'الصف الثالث الإعدادي',
   'first-sec':   'الصف الأول الثانوي',
   'second-sec':  'الصف الثاني الثانوي',
+  'third-sec':   'الصف الثالث الثانوي',
 };
 
 const COMPLETION_THRESHOLD = 80;

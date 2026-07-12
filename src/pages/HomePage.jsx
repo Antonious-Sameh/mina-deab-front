@@ -29,7 +29,7 @@ function StatCard({ title, value, icon: Icon, color, bgColor, sub }) {
 }
 
 const QUICK_LINKS = [
-  { label: 'تسجيل الحضور',  to: '/attendance',        icon: ClipboardCheck, color: 'text-green-600',  bg: 'bg-green-50'   },
+  { label: 'الحضور والفلوس',  to: '/attendance',        icon: ClipboardCheck, color: 'text-green-600',  bg: 'bg-green-50'   },
   { label: 'إدارة الطلاب',  to: '/students',           icon: Users,          color: 'text-primary',    bg: 'bg-primary/10' },
   { label: 'الدرجات',        to: '/teacher/grades',     icon: Award,          color: 'text-blue-600',   bg: 'bg-blue-50'    },
   { label: 'الامتحانات',     to: '/teacher/exams',      icon: FileText,       color: 'text-purple-600', bg: 'bg-purple-50'  },

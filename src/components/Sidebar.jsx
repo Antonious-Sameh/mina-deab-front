@@ -28,7 +28,7 @@ const TEACHER_GROUPS = [
       { path: "/teacher/home", label: "لوحة التحكم", icon: LayoutDashboard },
       { path: "/groups", label: "المجموعات", icon: UsersRound },
       { path: "/students", label: "الطلاب", icon: GraduationCap },
-      { path: "/attendance", label: "الحضور", icon: ClipboardCheck },
+      { path: "/attendance", label: "الحضور والفلوس", icon: ClipboardCheck },
     ],
   },
   {
