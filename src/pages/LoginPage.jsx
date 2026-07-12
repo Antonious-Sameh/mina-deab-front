@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { ArrowLeft, Eye, EyeOff, HelpCircle } from 'lucide-react'; // Removed unused Sigma and Binary
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react'; // Preserved core icon utilities
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,89 +56,186 @@ export default function LoginPage() {
         <title>تسجيل الدخول | الإبداع في الرياضيات</title>
       </Helmet>
 
-      {/* التصميم المطور (Premium) 
-        - تم الحفاظ على الخلفية والفوتر والنصوص.
-        - تم تكبير صورة المدرس بنسبة ~30% واستخدام aspect-square مع object-contain لضمان عدم القص.
-        - تم إزالة العناصر المشتتة (Sigma, Binary).
-        - تم تحسين جودة الكارد، الـ Input، والزر (Premium Look).
+      {/* Hardware-accelerated CSS animations for lag-free performance under high concurrent users */}
+      <style>{`
+        @keyframes spin-cw {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes spin-ccw {
+          0% { transform: rotate(360deg); }
+          100% { transform: rotate(0deg); }
+        }
+        @keyframes subtle-shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-spin-cw {
+          animation: spin-cw 70s linear infinite;
+        }
+        .animate-spin-ccw {
+          animation: spin-ccw 80s linear infinite;
+        }
+      `}</style>
+
+      {/* 
+        التصميم المطور (Drafting Board Warm-Light Edition)
+        - محاكاة لوحة رسم هندسي ومسطرة قياس (Draftsman CAD Workspace).
+        - خلفية ورق عاجية دافئة ومريحة ومضادة لتعب العين (Warm Ivory Page).
+        - مساطر قياس (Rulers) على أطراف الشاشة مع مؤشرات زاوية منقلة للمدرس.
+        - تصميم إبداعي حقيقي ومختلف تماماً عن القوالب النمطية للذكاء الاصطناعي.
       */}
-      <div className="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100 px-4 antialiased relative overflow-hidden selection:bg-indigo-500/30 font-sans">
+      <div className="min-h-screen flex flex-col justify-between bg-[#f6f5f0] text-slate-800 antialiased relative overflow-hidden font-sans select-none">
         
-        {/* شبكة هندسية دقيقة للخلفية (Math Grid Effect) - تم الحفاظ عليها */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-70 pointer-events-none z-0" />
+        {/* ========================================== */}
+        {/* CAD WORKSPACE METRIC RULERS (Desktop Only) */}
+        {/* ========================================== */}
+        {/* Top Ruler */}
+        <div className="hidden lg:block absolute top-0 left-0 right-0 h-6 border-b border-[#cbd5e1]/45 bg-[#fdfdfb]/80 z-20 overflow-hidden pointer-events-none">
+          <svg className="w-full h-full opacity-60" xmlns="http://www.w3.org/2000/svg">
+            <line x1="0" y1="24" x2="100%" y2="24" stroke="#e1ded5" strokeWidth="1" />
+            {Array.from({ length: 45 }).map((_, i) => (
+              <React.Fragment key={i}>
+                <line x1={i * 50 + 24} y1="12" x2={i * 50 + 24} y2="24" stroke="#cbd5e1" strokeWidth="1" />
+                <line x1={i * 50 + 24 + 25} y1="18" x2={i * 50 + 24 + 25} y2="24" stroke="#e2e8f0" strokeWidth="0.8" />
+                {i % 2 === 0 && (
+                  <text x={i * 50 + 28} y="10" fontSize="8" fontFamily="monospace" fill="#94a3b8">{i * 50}</text>
+                )}
+              </React.Fragment>
+            ))}
+          </svg>
+        </div>
 
-        {/* تأثيرات ضوئية ملونة (أشعة الجبر والهندسة) - تم الحفاظ عليها */}
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none z-0" />
-        <div className="absolute bottom-[10%] left-[-10%] w-[400px] h-[400px] bg-violet-600/10 rounded-full blur-[100px] pointer-events-none z-0" />
+        {/* Left Ruler */}
+        <div className="hidden lg:block absolute top-0 left-0 bottom-0 w-6 border-r border-[#cbd5e1]/45 bg-[#fdfdfb]/80 z-20 overflow-hidden pointer-events-none">
+          <svg className="w-full h-full opacity-60" xmlns="http://www.w3.org/2000/svg">
+            <line x1="24" y1="0" x2="24" y2="100%" stroke="#e1ded5" strokeWidth="1" />
+            {Array.from({ length: 30 }).map((_, i) => (
+              <React.Fragment key={i}>
+                <line x1="12" y1={i * 50 + 24} x2="24" y2={i * 50 + 24} stroke="#cbd5e1" strokeWidth="1" />
+                <line x1="18" y1={i * 50 + 24 + 25} x2="24" y2={i * 50 + 24 + 25} stroke="#e2e8f0" strokeWidth="0.8" />
+                {i % 2 === 0 && (
+                  <text x="2" y={i * 50 + 24 + 10} fontSize="8" fontFamily="monospace" fill="#94a3b8">{i * 50}</text>
+                )}
+              </React.Fragment>
+            ))}
+          </svg>
+        </div>
 
+        {/* Grid lines layout (Math Drafting Board Effect) */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e8e7e0_1px,transparent_1px),linear-gradient(to_bottom,#e8e7e0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_45%,#000_80%,transparent_100%)] opacity-55 pointer-events-none z-0" />
+
+        {/* Dynamic blueprints drawn in light silver vectors */}
+        <svg className="absolute inset-0 w-full h-full opacity-[0.35] pointer-events-none z-0" xmlns="http://www.w3.org/2000/svg">
+          <g className="animate-spin-cw origin-center" style={{ transformOrigin: 'center' }}>
+            <circle cx="50%" cy="45%" r="180" fill="none" stroke="#e1e4eb" strokeWidth="1" strokeDasharray="3 3" />
+            <circle cx="50%" cy="45%" r="320" fill="none" stroke="#e1e4eb" strokeWidth="1" />
+            <circle cx="50%" cy="45%" r="480" fill="none" stroke="#d5d9e2" strokeWidth="1.2" strokeDasharray="5 5" />
+            <line x1="50%" y1="45%" x2="70%" y2="20%" stroke="rgba(99, 102, 241, 0.12)" strokeWidth="1.2" />
+          </g>
+          <g className="animate-spin-ccw origin-center" style={{ transformOrigin: 'center' }}>
+            <circle cx="50%" cy="45%" r="250" fill="none" stroke="#e1e4eb" strokeWidth="1" strokeDasharray="6 6" />
+          </g>
+          {/* Wave vectors */}
+          <path d="M 0,350 Q 200,200 400,350 T 800,350 T 1200,350 T 1600,350" fill="none" stroke="#d4d4d8" strokeWidth="1.2" />
+        </svg>
+
+        {/* Subtle, soft light beam highlights */}
+        <div className="absolute top-[25%] left-[25%] w-[350px] h-[350px] bg-indigo-500/5 rounded-full blur-[90px] pointer-events-none z-0" />
+        <div className="absolute bottom-[25%] right-[25%] w-[300px] h-[300px] bg-cyan-500/5 rounded-full blur-[90px] pointer-events-none z-0" />
+
+        {/* Content Viewport */}
         <div className="flex-1 flex flex-col justify-center py-16 sm:px-6 lg:px-8 relative z-10">
-          <div className="sm:mx-auto sm:w-full sm:max-w-[460px]"> {/* تم تكبير الـ max-w قليلاً لتنفس التصميم */}
+          <div className="sm:mx-auto sm:w-full sm:max-w-[450px] px-4">
             
-            {/* الكارت الزجاجي الحديث الاحترافي (Premium Upgrade)
-              - border أرق، shadow أعمق وأكثر نعومة، و blur أقل.
-            */}
-            <Card className="border border-slate-800/40 bg-slate-900/50 backdrop-blur-lg shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] rounded-3xl overflow-visible mt-28 relative transition-shadow duration-300">
+            {/* The Blueprint Drawing Card Panel */}
+            <Card className="border-2 border-[#e1ded5] bg-white/95 backdrop-blur-md shadow-[0_15px_40px_rgba(15,23,42,0.04),_0_1px_3px_rgba(0,0,0,0.01)] rounded-[28px] overflow-visible mt-24 relative p-1">
               
-              {/* تم حذف الأيقونات الرياضية العائمة المشتتة (Sigma/Binary) */}
+              {/* L-shaped Blueprint Draft Crop Marks in Corners */}
+              <div className="absolute top-4 left-4 w-3.5 h-3.5 border-t border-l border-slate-300 pointer-events-none" />
+              <div className="absolute top-4 right-4 w-3.5 h-3.5 border-t border-r border-slate-300 pointer-events-none" />
+              <div className="absolute bottom-4 left-4 w-3.5 h-3.5 border-b border-l border-slate-300 pointer-events-none" />
+              <div className="absolute bottom-4 right-4 w-3.5 h-3.5 border-b border-r border-slate-300 pointer-events-none" />
 
-              {/* الصورة الشخصية المدمجة ببرواز مضيء هندسي (التركيز الأساسي)
-                - تم تكبير المساحة بنسبة ~30% (w-40 h-40).
-                - تم استخدام object-contain لضمان عدم قص الوجه أو الأكتاف.
-                - إطار بسيط جداً (حلقة واحدة) مع glow احترافي.
-                - تمت إزالة التدرج اللوني المبالغ فيه.
-              */}
+              {/* الصورة الشخصية للأستاذ بإطار المنقلة الهندسية */}
               <div className="absolute -top-20 inset-x-0 flex justify-center z-20">
-                <div className="w-40 h-40 rounded-3xl p-1 bg-slate-800 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.6)] relative">
-                  {/* Glow خفيف واحترافي حول الصورة (Premium Glow) */}
-                  <div className="absolute inset-0 rounded-3xl bg-indigo-500/20 blur-xl opacity-80 pointer-events-none" />
+                <div className="relative w-40 h-40 flex items-center justify-center">
                   
-                  <div className="w-full h-full rounded-[21px] overflow-hidden bg-slate-950 relative group border-2 border-slate-700/50 flex items-center justify-center">
-                    <img 
-                      src="/teacher.jpg" 
-                      alt="صورة الأستاذ" 
-                      className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
-                      loading="eager"
-                    />
-                    {/* طبقة تفاعلية ناعمة عند الـ Hover */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  {/* Concentric compass circles */}
+                  <div className="absolute inset-0 rounded-full border border-dashed border-indigo-500/20 animate-spin-cw" />
+                  <div className="absolute -inset-2 rounded-full border border-slate-200/60 animate-spin-ccw" />
+                  
+                  {/* Angle Marks and Lines */}
+                  <svg className="absolute -inset-3 w-[calc(100%+24px)] h-[calc(100%+24px)] opacity-30 animate-spin-cw" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(99, 102, 241, 0.4)" strokeWidth="0.5" />
+                    {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => (
+                      <line
+                        key={deg}
+                        x1="50"
+                        y1="2"
+                        x2="50"
+                        y2="5"
+                        stroke="rgba(99, 102, 241, 0.7)"
+                        strokeWidth="0.8"
+                        transform={`rotate(${deg} 50 50)`}
+                      />
+                    ))}
+                  </svg>
+                  
+                  {/* Coordinates marks */}
+                  <span className="absolute -top-5 text-[8px] font-mono text-indigo-500 font-bold bg-[#f6f5f0] px-1.5 py-0.5 rounded border border-slate-200 shadow-sm">90° N</span>
+                  <span className="absolute -bottom-5 text-[8px] font-mono text-indigo-500 font-bold bg-[#f6f5f0] px-1.5 py-0.5 rounded border border-slate-200 shadow-sm">270° S</span>
+
+                  {/* Main Portrait Frame */}
+                  <div className="w-32 h-32 rounded-full p-1 bg-white border border-slate-200 shadow-md relative overflow-hidden group z-10">
+                    <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 flex items-center justify-center relative">
+                      <img 
+                        src="/teacher.jpg" 
+                        alt="صورة الأستاذ" 
+                        className="w-full h-full object-contain transition-transform duration-500 hover:scale-105"
+                        loading="eager"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* الهيدر الجديد المبتكر - تم زيادة الـ padding وتنسيق النصوص */}
-              <div className="relative pt-28 pb-6 px-8 text-center overflow-hidden">
-                <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-100 via-slate-100 to-indigo-100 bg-clip-text text-transparent">
+              {/* Title & Subtitle Badge */}
+              <div className="relative pt-24 pb-4 px-8 text-center">
+                <h1 className="text-3xl font-black text-slate-800 tracking-tight">
                   الإبداع في الرياضيات
                 </h1>
-                <p className="text-sm text-slate-400 mt-4 max-w-[340px] mx-auto leading-relaxed">
-                  دي مش رياضة دي مزيكا 🎻🎻
-                </p>
+                
+                <div className="mt-3 flex justify-center">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50/70 border border-indigo-100 text-xs font-bold text-indigo-600">
+                    دي مش رياضة دي مزيكا 🎻🎻
+                  </span>
+                </div>
               </div>
 
-              {/* منطقة إدخال الكود الفاخرة */}
-              <CardContent className="pt-8 pb-12 px-8 sm:px-12">
-                <form id="login-form" onSubmit={handleSubmit} className="space-y-8">
+              {/* Form elements with Clean layout */}
+              <CardContent className="pt-6 pb-12 px-8 sm:px-12 relative z-10">
+                <form id="login-form" onSubmit={handleSubmit} className="space-y-6">
                   
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     <div className="flex justify-between items-center px-1">
                       <Label 
                         htmlFor="code" 
-                        className="text-xs font-medium text-slate-400 tracking-wider"
+                        className="text-xs font-bold text-slate-400 tracking-wider"
                       >
                         أدخل كود المرور الخاص بك
                       </Label>
-                      {/* Math_Key badge - تم تبسيطها */}
-                      <span className="text-[10px] text-indigo-300 bg-indigo-950/50 px-3 py-1 rounded-full font-mono border border-indigo-900/50">
+                      
+                      <span className="flex items-center gap-1 text-[10px] font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100/50">
                         Math_Key
                       </span>
                     </div>
                     
-                    {/* Input المطور (Premium Input)
-                      - h-16 ليعطي شعوراً بالفخامة.
-                      - text-3xl مع tracking متباعد.
-                      - focus animation أنعم وحدود أرق.
-                    */}
+                    {/* Bracket-Framed Password Input */}
                     <div className="relative flex items-center group">
+                      <div className="absolute -left-1.5 top-2.5 bottom-2.5 w-[3px] bg-slate-200 group-focus-within:bg-indigo-500 transition-all rounded-full" />
+                      <div className="absolute -right-1.5 top-2.5 bottom-2.5 w-[3px] bg-slate-200 group-focus-within:bg-indigo-500 transition-all rounded-full" />
+                      
                       <Input
                         id="code"
                         type={showCode ? "text" : "password"}
@@ -146,7 +243,7 @@ export default function LoginPage() {
                         value={code}
                         onChange={handleInputChange}
                         disabled={loading}
-                        className="text-center text-3xl font-bold tracking-[0.3em] h-16 bg-slate-950/80 border border-slate-800 text-indigo-50 focus-visible:ring-1 focus-visible:ring-indigo-500/80 focus-visible:border-indigo-600 transition-all rounded-2xl placeholder:tracking-normal placeholder:font-normal placeholder:text-slate-700 pl-16 pr-5 shadow-inner group-hover:border-slate-700/80 w-full"
+                        className="text-center text-3xl font-bold tracking-[0.35em] h-15 bg-slate-50/80 border border-slate-200/80 text-slate-800 focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 transition-all rounded-2xl placeholder:tracking-normal placeholder:font-normal placeholder:text-slate-300 pl-14 pr-5 shadow-inner w-full font-mono"
                         dir="ltr"
                         autoFocus
                         autoComplete="current-password"
@@ -155,11 +252,11 @@ export default function LoginPage() {
                         aria-label="كود الدخول"
                       />
                       
-                      {/* زر إظهار/إخفاء الكود */}
+                      {/* Show/Hide code button */}
                       <button
                         type="button"
                         onClick={() => setShowCode(!showCode)}
-                        className="absolute left-5 p-2.5 text-slate-500 hover:text-indigo-200 hover:bg-slate-800/80 active:bg-slate-800 transition-all rounded-xl focus:outline-none"
+                        className="absolute left-4 p-2.5 text-slate-400 hover:text-indigo-600 active:scale-95 transition-all rounded-xl focus:outline-none"
                         aria-label={showCode ? "إخفاء الكود" : "إظهار الكود"}
                       >
                         {showCode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -167,26 +264,24 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  {/* زر الدخول الجديد كلياً (Premium Button)
-                    - h-14 ليتناسب مع الـ input.
-                    - لون أزرق واحد (indigo-600)، مع hover ناعم.
-                    - micro-interaction عند الضغط.
-                    - glow خفيف يعبر عن الانطلاق.
-                  */}
+                  {/* Clean Royal Slate Login Button */}
                   <Button
                     type="submit"
-                    className="w-full h-14 text-lg font-bold bg-indigo-600 text-white hover:bg-indigo-500 active:scale-[0.98] rounded-2xl shadow-[0_6px_25px_-5px_rgba(79,70,229,0.4)] transition-all duration-200 flex items-center justify-center gap-3 group border border-indigo-700/50"
+                    className="w-full h-14 text-base font-bold bg-slate-900 hover:bg-slate-800 text-white active:scale-[0.98] rounded-2xl shadow-[0_4px_16px_rgba(15,23,42,0.1)] hover:shadow-[0_4px_22px_rgba(15,23,42,0.15)] transition-all duration-300 flex items-center justify-center gap-2 group border-0 relative overflow-hidden"
                     disabled={loading}
                   >
+                    {/* Shimmer sweep effect */}
+                    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[subtle-shimmer_1.8s_infinite] pointer-events-none" />
+
                     {loading ? (
-                      <span className="flex items-center gap-3" role="status" aria-live="polite">
+                      <span className="flex items-center gap-3.5" role="status" aria-live="polite">
                         <span className="w-5 h-5 border-2 border-slate-400 border-t-white rounded-full animate-spin" />
-                        <span>جاري التحقق من المعطيات...</span>
+                        <span>جاري التحقق...</span>
                       </span>
                     ) : (
                       <>
                         <span>انطلق نحو الإبداع</span>
-                        <ArrowLeft className="h-5 w-5 transition-transform duration-300 ease-out group-hover:-translate-x-1.5 rtl:rotate-180 text-indigo-100" />
+                        <ArrowLeft className="h-4 w-4 transition-transform duration-300 ease-out group-hover:-translate-x-1.5 rtl:rotate-180 text-white/90" />
                       </>
                     )}
                   </Button>
@@ -196,15 +291,15 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* الفوتر الجديد المحدث - تم الحفاظ عليه مع تحسين طفيف للهوامش */}
-        <footer className="w-full py-8 text-center border-t border-slate-900 bg-slate-950/40 backdrop-blur-md relative z-10">
+        {/* Blueprint Sheet Footer Title Block */}
+        <footer className="w-full py-8 text-center border-t border-[#cbd5e1]/45 bg-[#f6f5f0]/30 relative z-10 font-sans">
           <div className="max-w-md mx-auto flex flex-col items-center justify-center gap-1.5 px-6">
-            <p className="text-xs text-slate-500 font-medium">
+            <p className="text-xs text-slate-455 font-medium">
               &copy; 2026 الإبداع في الرياضيات. جميع الحقوق محفوظة.
             </p>
-            <p className="text-[11px] text-slate-600 font-normal">
-              تطوير: المهندس أنطونيوس سامح
-            </p>
+            <div className="flex items-center gap-2 text-[9px] text-slate-455 font-mono">
+              <span>تطوير: المهندس أنطونيوس سامح</span>
+            </div>
           </div>
         </footer>
 
