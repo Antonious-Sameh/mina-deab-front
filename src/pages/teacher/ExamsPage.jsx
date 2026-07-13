@@ -4,7 +4,7 @@ import {
   Plus, Edit, Trash2, Users, FileText, Upload, X, Save,
   Loader2, ToggleLeft, ToggleRight, Eye, Image,
   ClipboardList, Monitor, FileType, ExternalLink, PlusCircle,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Folder, FolderPlus, FolderOpen
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { Badge }  from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { examsAPI } from '@/api/services';
+import { examsAPI, paperExamSectionsAPI } from '@/api/services';
 import api from '@/api/axios';
 import { toast } from 'sonner';
 import FileViewerModal from '@/components/FileViewerModal';
@@ -129,6 +129,65 @@ function QuestionBuilder({ questions, onChange }) {
   );
 }
 
+// ── Section Picker (paper exams only) — choose an existing folder, or type a new one ──
+function SectionPicker({ academicYear, value, onChange }) {
+  const [sections, setSections] = useState([]);
+  const [loading,  setLoading]  = useState(false);
+  const [creatingNew, setCreatingNew] = useState(false);
+
+  useEffect(() => {
+    if (!academicYear) { setSections([]); return; }
+    setLoading(true);
+    paperExamSectionsAPI.getAll(academicYear)
+      .then(d => setSections(d.sections || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [academicYear]);
+
+  const handleSelect = (val) => {
+    if (val === '__new__') {
+      setCreatingNew(true);
+      onChange({ sectionId: null, sectionName: '' });
+    } else {
+      setCreatingNew(false);
+      onChange({ sectionId: val, sectionName: null });
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Label>قسم الامتحان <span className="text-destructive">*</span></Label>
+      {!creatingNew ? (
+        <Select value={value.sectionId || undefined} onValueChange={handleSelect} disabled={!academicYear || loading}>
+          <SelectTrigger>
+            <SelectValue placeholder={!academicYear ? 'اختر السنة الدراسية أولاً' : (loading ? 'جاري التحميل...' : 'اختر قسماً موجوداً أو أضف قسم جديد...')} />
+          </SelectTrigger>
+          <SelectContent>
+            {sections.map(s => (
+              <SelectItem key={s._id} value={s._id}>📁 {s.name} ({s.examCount})</SelectItem>
+            ))}
+            <SelectItem value="__new__">
+              <span className="flex items-center gap-1.5 text-primary font-medium"><FolderPlus className="h-3.5 w-3.5" /> قسم جديد...</span>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Input
+            value={value.sectionName || ''}
+            onChange={e => onChange({ sectionId: null, sectionName: e.target.value })}
+            placeholder="اكتب اسم القسم الجديد (مثال: مسابقة 1)..."
+            autoFocus
+          />
+          <Button type="button" size="sm" variant="outline" onClick={() => { setCreatingNew(false); onChange({ sectionId: null, sectionName: null }); }}>
+            إلغاء
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Exam Form Modal ───────────────────────────────────────────────────────────
 function ExamModal({ exam, onClose, onSaved }) {
   const isEdit   = !!exam;
@@ -143,6 +202,10 @@ function ExamModal({ exam, onClose, onSaved }) {
     status:       exam?.status       || 'draft',
     questions:    exam?.questions    || [],
   });
+  const [section, setSection] = useState({
+    sectionId:   exam?.section?._id || null,
+    sectionName: null,
+  });
   const [saving,    setSaving]    = useState(false);
   const [tab,       setTab]       = useState('info');
   const [paperFile, setPaperFile] = useState(null);
@@ -150,6 +213,7 @@ function ExamModal({ exam, onClose, onSaved }) {
   const fileRef = useRef(null);
 
   const set = (k,v) => setForm(p=>({...p,[k]:v}));
+  const setYear = (v) => { set('academicYear', v); setSection({ sectionId: null, sectionName: null }); };
   const totalPoints = form.questions.reduce((s,q)=>s+(q.points||1),0);
 
   const handleSave = async () => {
@@ -157,6 +221,7 @@ function ExamModal({ exam, onClose, onSaved }) {
     if (!form.academicYear)    { toast.error('السنة الدراسية مطلوبة'); return; }
     if (examType==='electronic' && form.questions.length===0) { toast.error('أضف سؤالاً واحداً على الأقل'); setTab('questions'); return; }
     if (examType==='paper' && !isEdit && !paperFile && !exam?.paperFileUrl) { toast.error('ارفع ملف الامتحان'); return; }
+    if (examType==='paper' && !section.sectionId && !section.sectionName?.trim()) { toast.error('اختر قسم الامتحان أو أضف قسماً جديداً'); return; }
 
     setSaving(true);
     try {
@@ -168,6 +233,10 @@ function ExamModal({ exam, onClose, onSaved }) {
         questions:     examType==='electronic' ? form.questions : [],
         maxScore:      examType==='paper' ? Number(form.maxScore)||0 : 0,
       };
+      if (examType==='paper') {
+        if (section.sectionId) payload.sectionId = section.sectionId;
+        else if (section.sectionName?.trim()) payload.sectionName = section.sectionName.trim();
+      }
 
       let savedExam;
       if (isEdit) {
@@ -241,7 +310,7 @@ function ExamModal({ exam, onClose, onSaved }) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>السنة الدراسية <span className="text-destructive">*</span></Label>
-                <Select value={form.academicYear} onValueChange={v=>set('academicYear',v)}>
+                <Select value={form.academicYear} onValueChange={setYear}>
                   <SelectTrigger><SelectValue placeholder="اختر..."/></SelectTrigger>
                   <SelectContent>{ACADEMIC_YEARS.map(y=><SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>)}</SelectContent>
                 </Select>
@@ -269,6 +338,11 @@ function ExamModal({ exam, onClose, onSaved }) {
             <div className="space-y-1.5"><Label>تعليمات (اختياري)</Label>
               <textarea value={form.description} onChange={e=>set('description',e.target.value)} rows={2} placeholder="تعليمات للطلاب..." className="w-full border rounded-lg px-3 py-2 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"/>
             </div>
+
+            {/* Section picker — paper exams only */}
+            {examType==='paper' && (
+              <SectionPicker academicYear={form.academicYear} value={section} onChange={setSection} />
+            )}
 
             {/* Paper file upload */}
             {examType==='paper' && (
@@ -545,6 +619,120 @@ export default function ExamsPage() {
 
   const updateExamLocal = (examId, patch) => setExams(p=>p.map(e=>e._id===examId?{...e,...patch}:e));
 
+  const [openSections, setOpenSections] = useState({}); // sectionKey -> bool
+  const toggleSection = (key) => setOpenSections(p => ({ ...p, [key]: !p[key] }));
+
+  // إلكتروني يفضل زي ما هو — مرصوص عادي. الورقي بس هو اللي بيتقسم لأقسام.
+  const electronicExams = exams.filter(e => e.examType !== 'paper');
+  const paperExams      = exams.filter(e => e.examType === 'paper');
+
+  const sectionGroups = (() => {
+    const map = {};
+    const order = [];
+    paperExams.forEach(e => {
+      const key = e.section?._id || '__none__';
+      if (!map[key]) { map[key] = { key, name: e.section?.name || 'بدون قسم', exams: [] }; order.push(key); }
+      map[key].exams.push(e);
+    });
+    // "بدون قسم" آخر حاجة لو موجودة
+    return order.sort((a,b) => (a==='__none__'?1:0) - (b==='__none__'?1:0)).map(k => map[k]);
+  })();
+
+  const renderExamItem = (exam) => (
+    <AccordionItem key={exam._id} value={exam._id} className="bg-card border rounded-xl overflow-hidden shadow-sm">
+      <AccordionTrigger className="px-5 py-4 hover:no-underline hover:bg-muted/30">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full pr-2 text-right">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-base">{exam.title}</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[exam.status]}`}>{STATUS_LABELS[exam.status]}</span>
+              {/* Type badge */}
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${exam.examType==='paper'?'bg-orange-100 text-orange-700':'bg-blue-100 text-blue-700'}`}>
+                {exam.examType==='paper'?'ورقي':'إلكتروني'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+              <span>{YEAR_MAP[exam.academicYear]}</span>
+              {exam.examType==='electronic' && exam.questions?.length>0 && <span>{exam.questions.length} سؤال — {exam.maxScore} درجة</span>}
+              {exam.examType==='paper' && exam.maxScore>0 && <span>{exam.maxScore} درجة</span>}
+              {exam.examDate && <span>{new Date(exam.examDate).toLocaleDateString('ar-EG')}</span>}
+              {exam.submissionsCount>0 && <span className="text-green-600 font-medium">{exam.submissionsCount} حلوه</span>}
+            </div>
+          </div>
+        </div>
+      </AccordionTrigger>
+
+      <AccordionContent className="border-t bg-muted/10">
+        <div className="p-5 space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs" onClick={()=>setModal({exam})}><Edit className="h-3.5 w-3.5"/>تعديل</Button>
+            <Button size="sm" variant="outline" className={`gap-1.5 h-8 text-xs ${exam.status==='published'?'border-orange-300 text-orange-600':'border-green-300 text-green-600'}`} onClick={()=>handleStatusToggle(exam)}>
+              {exam.status==='published'?<><ToggleRight className="h-3.5 w-3.5"/>تحويل لمسودة</>:<><ToggleLeft className="h-3.5 w-3.5"/>نشر للطلاب</>}
+            </Button>
+            {exam.examType==='electronic' && (
+              <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs border-blue-300 text-blue-600" onClick={()=>setResultsFor(resultsFor===exam._id?null:exam._id)}>
+                <Users className="h-3.5 w-3.5"/>النتائج
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" className="gap-1.5 h-8 text-xs text-destructive hover:text-destructive mr-auto" onClick={()=>handleDelete(exam)}><Trash2 className="h-3.5 w-3.5"/>حذف</Button>
+          </div>
+
+          {/* Paper file section */}
+          {exam.examType==='paper' && (
+            <div className="border-t pt-3">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">ملف الامتحان الورقي</p>
+              <FileSection
+                label="ملف الامتحان" url={exam.paperFileUrl} type={exam.paperFileType}
+                endpoint={`/exams/${exam._id}/paper-file`}
+                onUpdated={d=>updateExamLocal(exam._id, { paperFileUrl:d.paperFileUrl||d.url, paperFileType:d.paperFileType||d.type })}
+              />
+            </div>
+          )}
+
+          {/* Answer sheet(s) — multiple files supported */}
+          <div className="border-t pt-3">
+            <p className="text-xs font-semibold text-muted-foreground mb-1">نماذج الإجابة</p>
+            <AnswerSheetsSection
+              sheets={exam.answerSheets?.length ? exam.answerSheets : (exam.answerSheetUrl ? [{ _id: 'legacy', url: exam.answerSheetUrl, type: exam.answerSheetType }] : [])}
+              examId={exam._id}
+              onUpdated={(sheets) => updateExamLocal(exam._id, { answerSheets: sheets, answerSheetUrl: sheets[sheets.length-1]?.url || null, answerSheetType: sheets[sheets.length-1]?.type || null })}
+            />
+          </div>
+
+          {/* Questions preview (electronic only) */}
+          {exam.examType==='electronic' && exam.questions?.length>0 && (
+            <div className="border-t pt-3">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">معاينة الأسئلة</p>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {exam.questions.map((q,i)=>(
+                  <div key={i} className="flex items-start gap-2 text-sm bg-background rounded-lg px-3 py-2">
+                    <span className="text-muted-foreground shrink-0 w-5 text-xs mt-0.5">{i+1}.</span>
+                    <div className="flex-1 min-w-0">
+                      {q.imageUrl && <img src={q.imageUrl} alt="" className="h-12 rounded mb-1 object-contain bg-white border"/>}
+                      <p className="font-medium leading-snug">{q.text}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {q.type==='truefalse'?'صح/خطأ':`MCQ · ${q.options.filter(Boolean).length} خيارات`}
+                        {' · '}الإجابة: <span className="text-green-600 font-bold">{q.options[q.correctAnswer]}</span>
+                        {' · '}{q.points} درجة
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {resultsFor===exam._id && exam.examType==='electronic' && (
+            <div className="border-t pt-3">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">نتائج الطلاب</p>
+              <ResultsPanel examId={exam._id}/>
+            </div>
+          )}
+        </div>
+      </AccordionContent>
+    </AccordionItem>
+  );
+
   return (
     <>
       <Helmet><title>الامتحانات | نظام المعلم</title></Helmet>
@@ -572,102 +760,55 @@ export default function ExamsPage() {
             <h3 className="text-lg font-bold">لا توجد امتحانات</h3>
           </div>
         ) : (
-          <Accordion type="multiple" className="space-y-3">
-            {exams.map(exam => (
-              <AccordionItem key={exam._id} value={exam._id} className="bg-card border rounded-xl overflow-hidden shadow-sm">
-                <AccordionTrigger className="px-5 py-4 hover:no-underline hover:bg-muted/30">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full pr-2 text-right">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-base">{exam.title}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[exam.status]}`}>{STATUS_LABELS[exam.status]}</span>
-                        {/* Type badge */}
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${exam.examType==='paper'?'bg-orange-100 text-orange-700':'bg-blue-100 text-blue-700'}`}>
-                          {exam.examType==='paper'?'ورقي':'إلكتروني'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                        <span>{YEAR_MAP[exam.academicYear]}</span>
-                        {exam.examType==='electronic' && exam.questions?.length>0 && <span>{exam.questions.length} سؤال — {exam.maxScore} درجة</span>}
-                        {exam.examType==='paper' && exam.maxScore>0 && <span>{exam.maxScore} درجة</span>}
-                        {exam.examDate && <span>{new Date(exam.examDate).toLocaleDateString('ar-EG')}</span>}
-                        {exam.submissionsCount>0 && <span className="text-green-600 font-medium">{exam.submissionsCount} حلوه</span>}
-                      </div>
-                    </div>
-                  </div>
-                </AccordionTrigger>
+          <div className="space-y-6">
+            {/* الامتحانات الإلكترونية — زي ما هي بالظبط، مرصوصة عادي */}
+            {electronicExams.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-bold text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Monitor className="h-4 w-4"/> الامتحانات الإلكترونية
+                </h3>
+                <Accordion type="multiple" className="space-y-3">
+                  {electronicExams.map(renderExamItem)}
+                </Accordion>
+              </div>
+            )}
 
-                <AccordionContent className="border-t bg-muted/10">
-                  <div className="p-5 space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs" onClick={()=>setModal({exam})}><Edit className="h-3.5 w-3.5"/>تعديل</Button>
-                      <Button size="sm" variant="outline" className={`gap-1.5 h-8 text-xs ${exam.status==='published'?'border-orange-300 text-orange-600':'border-green-300 text-green-600'}`} onClick={()=>handleStatusToggle(exam)}>
-                        {exam.status==='published'?<><ToggleRight className="h-3.5 w-3.5"/>تحويل لمسودة</>:<><ToggleLeft className="h-3.5 w-3.5"/>نشر للطلاب</>}
-                      </Button>
-                      {exam.examType==='electronic' && (
-                        <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs border-blue-300 text-blue-600" onClick={()=>setResultsFor(resultsFor===exam._id?null:exam._id)}>
-                          <Users className="h-3.5 w-3.5"/>النتائج
-                        </Button>
-                      )}
-                      <Button size="sm" variant="ghost" className="gap-1.5 h-8 text-xs text-destructive hover:text-destructive mr-auto" onClick={()=>handleDelete(exam)}><Trash2 className="h-3.5 w-3.5"/>حذف</Button>
-                    </div>
-
-                    {/* Paper file section */}
-                    {exam.examType==='paper' && (
-                      <div className="border-t pt-3">
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">ملف الامتحان الورقي</p>
-                        <FileSection
-                          label="ملف الامتحان" url={exam.paperFileUrl} type={exam.paperFileType}
-                          endpoint={`/exams/${exam._id}/paper-file`}
-                          onUpdated={d=>updateExamLocal(exam._id, { paperFileUrl:d.paperFileUrl||d.url, paperFileType:d.paperFileType||d.type })}
-                        />
+            {/* الامتحانات الورقية — مقسّمة داخل أقسام (📁 فولدرات) */}
+            {paperExams.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-bold text-sm text-muted-foreground flex items-center gap-1.5">
+                  <ClipboardList className="h-4 w-4"/> الامتحانات الورقية
+                </h3>
+                <div className="space-y-3">
+                  {sectionGroups.map(group => {
+                    const isOpen = openSections[group.key] !== false; // مفتوح افتراضياً
+                    return (
+                      <div key={group.key} className="bg-muted/20 border rounded-2xl overflow-hidden">
+                        <button
+                          className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
+                          onClick={() => toggleSection(group.key)}
+                        >
+                          <div className="flex items-center gap-2">
+                            {isOpen ? <FolderOpen className="h-4 w-4 text-orange-500"/> : <Folder className="h-4 w-4 text-orange-500"/>}
+                            <span className="font-bold text-sm">{group.name}</span>
+                            <Badge variant="secondary" className="text-xs">{group.exams.length}</Badge>
+                          </div>
+                          {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground"/> : <ChevronDown className="h-4 w-4 text-muted-foreground"/>}
+                        </button>
+                        {isOpen && (
+                          <div className="p-3 pt-0 space-y-3">
+                            <Accordion type="multiple" className="space-y-3">
+                              {group.exams.map(renderExamItem)}
+                            </Accordion>
+                          </div>
+                        )}
                       </div>
-                    )}
-
-                    {/* Answer sheet(s) — multiple files supported */}
-                    <div className="border-t pt-3">
-                      <p className="text-xs font-semibold text-muted-foreground mb-1">نماذج الإجابة</p>
-                      <AnswerSheetsSection
-                        sheets={exam.answerSheets?.length ? exam.answerSheets : (exam.answerSheetUrl ? [{ _id: 'legacy', url: exam.answerSheetUrl, type: exam.answerSheetType }] : [])}
-                        examId={exam._id}
-                        onUpdated={(sheets) => updateExamLocal(exam._id, { answerSheets: sheets, answerSheetUrl: sheets[sheets.length-1]?.url || null, answerSheetType: sheets[sheets.length-1]?.type || null })}
-                      />
-                    </div>
-
-                    {/* Questions preview (electronic only) */}
-                    {exam.examType==='electronic' && exam.questions?.length>0 && (
-                      <div className="border-t pt-3">
-                        <p className="text-xs font-semibold text-muted-foreground mb-2">معاينة الأسئلة</p>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {exam.questions.map((q,i)=>(
-                            <div key={i} className="flex items-start gap-2 text-sm bg-background rounded-lg px-3 py-2">
-                              <span className="text-muted-foreground shrink-0 w-5 text-xs mt-0.5">{i+1}.</span>
-                              <div className="flex-1 min-w-0">
-                                {q.imageUrl && <img src={q.imageUrl} alt="" className="h-12 rounded mb-1 object-contain bg-white border"/>}
-                                <p className="font-medium leading-snug">{q.text}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {q.type==='truefalse'?'صح/خطأ':`MCQ · ${q.options.filter(Boolean).length} خيارات`}
-                                  {' · '}الإجابة: <span className="text-green-600 font-bold">{q.options[q.correctAnswer]}</span>
-                                  {' · '}{q.points} درجة
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {resultsFor===exam._id && exam.examType==='electronic' && (
-                      <div className="border-t pt-3">
-                        <p className="text-xs font-semibold text-muted-foreground mb-2">نتائج الطلاب</p>
-                        <ResultsPanel examId={exam._id}/>
-                      </div>
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
       {modal==='create' && <ExamModal onClose={()=>setModal(null)} onSaved={()=>{setModal(null);load();}}/>}

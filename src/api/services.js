@@ -113,6 +113,14 @@ export const examsAPI = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+// PAPER EXAM SECTIONS (أقسام الامتحانات الورقية)
+// ══════════════════════════════════════════════════════════════════════════════
+export const paperExamSectionsAPI = {
+  getAll: (year) => api.get('/paper-exam-sections', { params: { year } }).then(getData),
+  create: (data) => api.post('/paper-exam-sections', data).then(getData),
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // GRADES
 // ══════════════════════════════════════════════════════════════════════════════
 export const gradesAPI = {
