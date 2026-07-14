@@ -88,6 +88,7 @@ function StudentModal({ student, groups, onClose, onSaved }) {
     group:        student?.group?._id   || '',
     phone:        student?.phone        || '',
     parentPhone:  student?.parentPhone  || '',
+    studentId:    student?.studentId ?? '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -113,6 +114,10 @@ function StudentModal({ student, groups, onClose, onSaved }) {
       toast.error('يجب اختيار مجموعة للطالب');
       return;
     }
+    if (!isEdit && String(form.studentId).trim() === '') {
+      toast.error('ID الطالب مطلوب');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -122,6 +127,7 @@ function StudentModal({ student, groups, onClose, onSaved }) {
         phone:       form.phone.trim() || null,
         parentPhone: form.parentPhone.trim() || null,
       };
+      if (!isEdit) payload.studentId = form.studentId;
       if (isEdit) {
         await studentsAPI.update(student._id, payload);
         toast.success('تم تعديل بيانات الطالب');
@@ -148,6 +154,23 @@ function StudentModal({ student, groups, onClose, onSaved }) {
           <div className="space-y-1.5">
             <Label>اسم الطالب <span className="text-destructive">*</span></Label>
             <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="الاسم رباعي" autoFocus />
+          </div>
+          <div className="space-y-1.5">
+            <Label>ID {!isEdit && <span className="text-destructive">*</span>}</Label>
+            {isEdit ? (
+              <Input value={form.studentId} disabled className="font-mono bg-muted/40" />
+            ) : (
+              <>
+                <Input
+                  value={form.studentId}
+                  onChange={e => set('studentId', e.target.value)}
+                  placeholder="اكتب ID الطالب"
+                  inputMode="numeric"
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground">لازم يكون فريد داخل نفس السنة الدراسية، ومش هينفع تغييره بعد الحفظ</p>
+              </>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>السنة الدراسية <span className="text-destructive">*</span></Label>

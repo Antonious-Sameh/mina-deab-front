@@ -29,6 +29,7 @@ import HeroesPage from '@/pages/teacher/HeroesPage.jsx';
 import NotesPage from '@/pages/teacher/NotesPage.jsx';
 import OnlinePage from '@/pages/teacher/OnlinePage.jsx';
 import AccountPage from '@/pages/AccountPage.jsx';
+import AdminPasswordGate from '@/components/AdminPasswordGate.jsx';
 
 // Student Pages
 import StudentHomePage from '@/pages/student/StudentHomePage.jsx';
@@ -83,20 +84,20 @@ function App() {
 
             {/* TEACHER ROUTES */}
             <Route path="/teacher/home" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><HomePage /></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/groups" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><GroupsPage /></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/groups" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><GroupsPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
             <Route path="/students" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><StudentsPage /></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/attendance" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AttendancePage /></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/attendance" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><AttendancePage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
             {/* صفحة الفلوس — مخفية مؤقتاً، هيتم استبدالها بنظام جديد */}
             {/* <Route path="/payments" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><PaymentsPage /></ProtectedLayout></ProtectedRoute>} /> */}
-            <Route path="/teacher/exams" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><ExamsPage /></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/teacher/grades" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><GradesPage /></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/teacher/exams" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><ExamsPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/teacher/grades" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><GradesPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
             <Route path="/teacher/rankings" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><RankingsPage /></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/teacher/points" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><PointsPage /></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/teacher/points" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><PointsPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
             <Route path="/teacher/reports" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><ReportsPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/teacher/heroes" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><HeroesPage /></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/teacher/notes" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><NotesPage /></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/teacher/online" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><OnlinePage /></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/teacher/account" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AccountPage /></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/teacher/notes" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><NotesPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/teacher/online" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><OnlinePage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/teacher/account" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><AccountPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
 
             {/* STUDENT ROUTES */}
             <Route path="/student/home" element={<ProtectedRoute allowedRole="student"><ProtectedLayout><StudentHomePage /></ProtectedLayout></ProtectedRoute>} />
