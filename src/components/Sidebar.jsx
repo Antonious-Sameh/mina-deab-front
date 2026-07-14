@@ -79,12 +79,12 @@ export default function Sidebar({ className }) {
       {/* الجزء المعدل: تم زيادة المساحة وإضافة الجملة تحت اسم المنصة */}
       <div className="flex flex-col justify-center border-b px-6 py-4 shrink-0 gap-1">
         <h2 className="text-lg font-bold text-primary">
-          {isTeacher ? "نظام المعلم" : "منصة خطوة"}
+          {isTeacher ? "نظام الأستاذ مينا دياب" : "منصة الإبداع"}
         </h2>
         {!isTeacher && (
           <div className="mt-1 bg-gradient-to-l from-primary/10 via-primary/5 to-transparent border-r-2 border-primary pr-2.5 py-1.5 rounded-l-md animate-pulse">
             <p className="text-[11px] font-semibold text-primary/90 leading-relaxed text-right">
-              ابدأ من هنا ... خطوة بخطوة نحو القمة 🚀
+              دي مش رياضة... دي مزيكا 🎵
             </p>
           </div>
         )}

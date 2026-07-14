@@ -136,7 +136,7 @@ export default function StudentHeroesPage() {
 
   return (
     <>
-      <Helmet><title>أبطال مروا من هنا</title></Helmet>
+      <Helmet><title>أبطال الإبداع</title></Helmet>
       <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-300">
         
         {/* هيدر الصفحة الرئيسي بتصميم فخم يليق بالأبطال */}
@@ -145,10 +145,10 @@ export default function StudentHeroesPage() {
             <Medal className="h-8 w-8 text-white" />
           </div>
           <h2 className="text-3xl sm:text-4xl font-black tracking-tight bg-gradient-to-l from-amber-600 to-yellow-500 bg-clip-text text-transparent">
-            أبطال مروا من هنا
+            أبطال الإبداع
           </h2>
           <p className="text-muted-foreground text-sm sm:text-base font-medium max-w-md mx-auto">
-            لوحة شرف تضم ذكريات، إنجازات، ومسيرة طلابنا المتميزين خطوة بخطوة
+            هنا بنحتفظ بأجمل لحظات وإنجازات أبطال الإبداع في الرياضيات. ⭐
           </p>
         </div>
 

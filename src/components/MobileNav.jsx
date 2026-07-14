@@ -85,12 +85,12 @@ export default function MobileNav({ open, onClose }) {
         {/* الجزء المعدل: تم إضافة الجملة تحت العنوان للموبايل */}
         <SheetHeader className="border-b p-6 text-right shrink-0 gap-1">
           <SheetTitle className="text-lg font-bold text-primary">
-            {isTeacher ? "نظام المعلم" : "منصة خطوة"}
+            {isTeacher ? "نظام الأستاذ مينا دياب" : "منصة الإبداع"}
           </SheetTitle>
           {!isTeacher && (
             <div className="mt-2 bg-gradient-to-l from-primary/10 to-transparent border-r-2 border-primary pr-3 py-1.5 rounded-l-md">
               <p className="text-[11px] sm:text-xs font-semibold text-primary/90 leading-relaxed">
-                ابدأ من هنا .. خطوة بخطوة نحو القمة 🚀
+                دي مش رياضة... دي مزيكا 🎵
               </p>
             </div>
           )}

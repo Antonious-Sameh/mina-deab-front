@@ -50,9 +50,9 @@ export default function PWAInstallPrompt() {
           <Smartphone className="h-5 w-5 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm">ثبّت تطبيق خطوة</p>
+          <p className="font-bold text-sm">ثبّت تطبيق الإبداع</p>
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-            أضف المنصة لشاشتك الرئيسية للوصول السريع بدون متصفح
+            أضف منصة الإبداع إلى شاشتك الرئيسية للوصول السريع في أي وقت.
           </p>
           <div className="flex gap-2 mt-3">
             <Button size="sm" className="gap-1.5 h-8 text-xs flex-1" onClick={handleInstall}>

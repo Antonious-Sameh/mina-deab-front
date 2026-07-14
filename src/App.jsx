@@ -89,10 +89,10 @@ function App() {
             <Route path="/attendance" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><AttendancePage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
             {/* صفحة الفلوس — مخفية مؤقتاً، هيتم استبدالها بنظام جديد */}
             {/* <Route path="/payments" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><PaymentsPage /></ProtectedLayout></ProtectedRoute>} /> */}
-            <Route path="/teacher/exams" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><ExamsPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/teacher/grades" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><GradesPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/teacher/exams" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><ExamsPage /></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/teacher/grades" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><GradesPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/teacher/rankings" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><RankingsPage /></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/teacher/points" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><PointsPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/teacher/points" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><PointsPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/teacher/reports" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><ReportsPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/teacher/heroes" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><HeroesPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/teacher/notes" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><NotesPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />

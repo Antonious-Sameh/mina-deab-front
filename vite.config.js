@@ -86,9 +86,9 @@ export default defineConfig({
       },
 
       manifest: {
-        name: "منصة خطوة التعليمية",
-        short_name: "خطوة",
-        description: "منصة خطوة التعليمية — دراسات اجتماعية وتاريخ",
+        name: "منصة الإبداع في الرياضيات",
+        short_name: "الإبداع",
+        description: "منصة الإبداع في الرياضيات للأستاذ مينا دياب",
         start_url: "/",
         scope: "/",
         display: "standalone",

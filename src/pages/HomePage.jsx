@@ -130,7 +130,7 @@ export default function HomePage() {
               
               <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-2xl border border-indigo-500/20 dark:border-indigo-500/30 shadow-sm backdrop-blur-md transition-all duration-300 hover:bg-indigo-500/20 dark:hover:bg-indigo-500/30">
                 <TrendingUp className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
-                <span className="text-xs sm:text-sm font-bold tracking-wider">منصة خطوة</span>
+                <span className="text-xs sm:text-sm font-bold tracking-wider">منصة الإبداع</span>
               </div>
             </div>
           </div>
