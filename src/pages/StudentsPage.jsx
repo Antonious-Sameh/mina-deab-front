@@ -88,7 +88,6 @@ function StudentModal({ student, groups, onClose, onSaved }) {
     group:        student?.group?._id   || '',
     phone:        student?.phone        || '',
     parentPhone:  student?.parentPhone  || '',
-    studentId:    student?.studentId ?? '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -114,10 +113,6 @@ function StudentModal({ student, groups, onClose, onSaved }) {
       toast.error('يجب اختيار مجموعة للطالب');
       return;
     }
-    if (!isEdit && String(form.studentId).trim() === '') {
-      toast.error('ID الطالب مطلوب');
-      return;
-    }
     setSaving(true);
     try {
       const payload = {
@@ -127,7 +122,6 @@ function StudentModal({ student, groups, onClose, onSaved }) {
         phone:       form.phone.trim() || null,
         parentPhone: form.parentPhone.trim() || null,
       };
-      if (!isEdit) payload.studentId = form.studentId;
       if (isEdit) {
         await studentsAPI.update(student._id, payload);
         toast.success('تم تعديل بيانات الطالب');
@@ -154,23 +148,6 @@ function StudentModal({ student, groups, onClose, onSaved }) {
           <div className="space-y-1.5">
             <Label>اسم الطالب <span className="text-destructive">*</span></Label>
             <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="الاسم رباعي" autoFocus />
-          </div>
-          <div className="space-y-1.5">
-            <Label>ID {!isEdit && <span className="text-destructive">*</span>}</Label>
-            {isEdit ? (
-              <Input value={form.studentId} disabled className="font-mono bg-muted/40" />
-            ) : (
-              <>
-                <Input
-                  value={form.studentId}
-                  onChange={e => set('studentId', e.target.value)}
-                  placeholder="اكتب ID الطالب"
-                  inputMode="numeric"
-                  className="font-mono"
-                />
-                <p className="text-xs text-muted-foreground">لازم يكون فريد داخل نفس السنة الدراسية، ومش هينفع تغييره بعد الحفظ</p>
-              </>
-            )}
           </div>
           <div className="space-y-1.5">
             <Label>السنة الدراسية <span className="text-destructive">*</span></Label>
@@ -352,6 +329,32 @@ export default function StudentsPage() {
   const [resetting, setResetting] = useState(null);
   const [deleting,  setDeleting]  = useState(null);
   const [newCodeInfo, setNewCodeInfo] = useState(null); // { code, name }
+  const [editingIdFor, setEditingIdFor] = useState(null); // studentId (Mongo _id) being edited
+  const [idDraft,       setIdDraft]     = useState('');
+  const [savingId,      setSavingId]    = useState(false);
+
+  const startEditId = (student) => {
+    setEditingIdFor(student._id);
+    setIdDraft(student.studentId ?? '');
+  };
+
+  const cancelEditId = () => {
+    setEditingIdFor(null);
+    setIdDraft('');
+  };
+
+  const saveEditId = async (student) => {
+    setSavingId(true);
+    try {
+      const data = await studentsAPI.update(student._id, { studentId: idDraft.trim() === '' ? null : idDraft });
+      setStudents(prev => prev.map(s => s._id === student._id ? { ...s, studentId: data.student.studentId } : s));
+      toast.success('تم حفظ الـ ID بنجاح');
+      setEditingIdFor(null);
+      setIdDraft('');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل حفظ الـ ID');
+    } finally { setSavingId(false); }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -513,7 +516,46 @@ export default function StudentsPage() {
                                 {grpStudents.map(student => (
                                   <tr key={student._id} className="hover:bg-background transition-colors">
                                     <td className="px-6 py-4 font-bold">{student.name}</td>
-                                    <td className="px-6 py-4 font-mono text-muted-foreground text-xs">{student.studentId ?? '—'}</td>
+                                    <td className="px-6 py-4">
+                                      {editingIdFor === student._id ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <Input
+                                            value={idDraft}
+                                            onChange={e => setIdDraft(e.target.value)}
+                                            placeholder="اكتب ID"
+                                            inputMode="numeric"
+                                            autoFocus
+                                            className="w-24 h-8 text-xs font-mono"
+                                            onKeyDown={e => { if (e.key === 'Enter') saveEditId(student); if (e.key === 'Escape') cancelEditId(); }}
+                                          />
+                                          <button
+                                            className="h-7 w-7 rounded-md flex items-center justify-center text-green-600 hover:bg-green-50 disabled:opacity-50"
+                                            onClick={() => saveEditId(student)}
+                                            disabled={savingId}
+                                            title="حفظ"
+                                          >
+                                            {savingId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                          </button>
+                                          <button
+                                            className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted"
+                                            onClick={cancelEditId}
+                                            disabled={savingId}
+                                            title="إلغاء"
+                                          >
+                                            <X className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground group/id"
+                                          onClick={() => startEditId(student)}
+                                          title="تعديل الـ ID"
+                                        >
+                                          <span>{student.studentId ?? '—'}</span>
+                                          <Edit className="h-3 w-3 opacity-0 group-hover/id:opacity-60 transition-opacity" />
+                                        </button>
+                                      )}
+                                    </td>
                                     <td className="px-6 py-4 font-mono text-muted-foreground text-xs">{student.codePlain}</td>
                                     <td className="px-6 py-4">
                                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
