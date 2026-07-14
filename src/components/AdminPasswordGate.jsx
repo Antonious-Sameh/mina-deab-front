@@ -1,8 +1,10 @@
 // src/components/AdminPasswordGate.jsx
 // Wraps a page's content and blocks it behind a simple password prompt.
-// Once unlocked, it stays unlocked for the rest of the browser session
-// (sessionStorage) — closing the tab/browser or a fresh visit asks again,
-// but refreshing the page or navigating between protected pages does not.
+// Each protected page is independent: the password is required every single
+// time you navigate into that page (no sessionStorage/localStorage, no
+// shared "unlocked" flag across pages). Once entered correctly, you can move
+// freely inside that page — but leaving it and opening it (or any other
+// protected page) again asks again.
 //
 // Purely client-side, no backend/database involved. Change the password in
 // src/config/adminPassword.js.
@@ -16,12 +18,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ADMIN_PAGES_PASSWORD } from '@/config/adminPassword';
 
-const SESSION_KEY = 'teacher_admin_pages_unlocked';
-
 export default function AdminPasswordGate({ children }) {
-  const [unlocked, setUnlocked] = useState(
-    () => sessionStorage.getItem(SESSION_KEY) === 'true'
-  );
+  const [unlocked, setUnlocked] = useState(false);
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
 
@@ -30,7 +28,6 @@ export default function AdminPasswordGate({ children }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (input === ADMIN_PAGES_PASSWORD) {
-      sessionStorage.setItem(SESSION_KEY, 'true');
       setUnlocked(true);
     } else {
       setError('كلمة المرور غير صحيحة');
