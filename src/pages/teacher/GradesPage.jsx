@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   Loader2, Save, ClipboardList, Monitor, Users, ChevronLeft, Folder
@@ -13,6 +13,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { gradesAPI, groupsAPI } from '@/api/services';
 import api from '@/api/axios';
 import { toast } from 'sonner';
+import { safeLocalStorage } from '@/lib/safe-storage';
+
+// ── Draft مؤقت لدرجات الامتحانات الورقية ────────────────────────────────────
+// بيحفظ الدرجات اللي بيكتبها المدرس تلقائيًا (محليًا فقط) قبل ما يضغط "حفظ"،
+// عشان لو خرج من الصفحة بالغلط أو رجع بعدين، الدرجات تفضل موجودة.
+// بيتمسح لوحده بعد نجاح الحفظ الفعلي على السيرفر (زر "حفظ" هو المرجع الرسمي).
+const gradesDraftKey = (examId) => `khatwa_grades_draft_${examId}`;
 
 const ACADEMIC_YEARS = [
   { value:'first-prep',  label:'الصف الأول الإعدادي'  },
@@ -201,19 +208,52 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
 
+  // بنستخدم الـ ref ده عشان نمنع الـ useEffect بتاع حفظ الـ Draft إنه يشتغل
+  // ويكتب فوق الـ Draft المحفوظ قبل ما نخلص تحميل/استرجاع البيانات أول مرة
+  const draftReadyRef = useRef(false);
+
   const load = useCallback(async () => {
     setLoading(true);
+    draftReadyRef.current = false;
     try {
       const r = await api.get(`/grades?exam=${exam._id}`);
       setSheet(r.data.data);
       const initial = {};
       (r.data.data.sheet || []).forEach(row => { if (row.entered) initial[row.student._id] = row.score; });
+
+      // ── استرجاع أي درجات مكتوبة ومحفوظة مؤقتًا (Draft) قبل كده ولسه ماتحفظتش ──
+      try {
+        const raw = safeLocalStorage.getItem(gradesDraftKey(exam._id));
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (draft && typeof draft === 'object') {
+            Object.assign(initial, draft);
+            toast.success('تم استرجاع درجات لم تُحفظ من آخر مرة');
+          }
+        }
+      } catch { /* تجاهل أي خطأ في قراءة الـ Draft */ }
+
       setScores(initial);
     } catch { toast.error('فشل تحميل الكشف'); }
-    finally { setLoading(false); }
+    finally {
+      setLoading(false);
+      draftReadyRef.current = true;
+    }
   }, [exam._id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // ── حفظ الدرجات كـ Draft تلقائيًا (محليًا) أثناء الكتابة، قبل الضغط على "حفظ" ──
+  useEffect(() => {
+    if (!draftReadyRef.current) return;
+    try {
+      if (Object.keys(scores).length > 0) {
+        safeLocalStorage.setItem(gradesDraftKey(exam._id), JSON.stringify(scores));
+      } else {
+        safeLocalStorage.removeItem(gradesDraftKey(exam._id));
+      }
+    } catch { /* تجاهل أي خطأ في الحفظ المؤقت — الحفظ الفعلي يعتمد على زر حفظ */ }
+  }, [scores, exam._id]);
 
   // اعرض طلاب المجموعة المختارة، أو كل الطلاب لو "كل المجموعات"
   const groupRows = !sheet ? [] : (group === ALL_GROUPS
@@ -228,6 +268,8 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
       const grades = groupRows.map(row => ({ studentId: row.student._id, score: Number(scores[row.student._id]) || 0 }));
       await api.post('/grades/bulk', { examId: exam._id, grades });
       toast.success('تم حفظ الدرجات ✓');
+      // الدرجات اتحفظت رسميًا على السيرفر — امسح الـ Draft المؤقت المحلي
+      safeLocalStorage.removeItem(gradesDraftKey(exam._id));
       load();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'فشل الحفظ');

@@ -228,6 +228,10 @@ function PaymentEditModal({ studentId, studentName, monthName, onClose, onChange
 // LEVEL 3 — MONTHS
 // ══════════════════════════════════════════════════════════════════════════════
 
+// أقل عدد حصص لازم يكون اتسجل في آخر شهر قبل ما نظهر تنبيه "عليهم فلوس"
+// (مش منطقي إننا نعرض التنبيه من أول أو تاني حصة في الشهر، لسه بدري على الدفع)
+const MIN_SESSIONS_BEFORE_UNPAID_ALERT = 5;
+
 function MonthsView({ group, onOpenMonth }) {
   const [months,       setMonths]       = useState([]);
   const [loading,      setLoading]      = useState(true);
@@ -236,11 +240,27 @@ function MonthsView({ group, onOpenMonth }) {
   const [loadingUnpaid,setLoadingUnpaid]= useState(true);
   const [unpaidOpen,   setUnpaidOpen]   = useState(false);
 
+  // عدد حصص آخر شهر مضاف (بنستخدمه عشان نأجل ظهور تنبيه "عليهم فلوس"
+  // لحد ما يعدي عدد مناسب من الحصص، مش من أول حصة في الشهر)
+  const [latestMonthSessionsCount, setLatestMonthSessionsCount] = useState(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await monthsAPI.getAll(group._id);
-      setMonths(data.months || []);
+      const monthsList = data.months || [];
+      setMonths(monthsList);
+
+      // آخر شهر مضاف = آخر عنصر في القائمة (بترتيب تاريخ الإنشاء تصاعديًا)
+      const latestMonth = monthsList[monthsList.length - 1];
+      if (latestMonth) {
+        try {
+          const sData = await sessionsAPI.getAll(latestMonth._id);
+          setLatestMonthSessionsCount((sData.sessions || []).length);
+        } catch { setLatestMonthSessionsCount(0); }
+      } else {
+        setLatestMonthSessionsCount(0);
+      }
     } catch { toast.error('فشل تحميل الشهور'); }
     finally { setLoading(false); }
   }, [group._id]);
@@ -256,6 +276,10 @@ function MonthsView({ group, onOpenMonth }) {
 
   useEffect(() => { load(); loadUnpaid(); }, [load, loadUnpaid]);
 
+  // نتأكد إن عدد الحصص في آخر شهر وصل للحد الأدنى قبل عرض تنبيه المتأخرين عن الدفع
+  const canShowUnpaidAlert = latestMonthSessionsCount !== null
+    && latestMonthSessionsCount >= MIN_SESSIONS_BEFORE_UNPAID_ALERT;
+
   const handleDelete = async (month) => {
     if (!window.confirm(`حذف شهر "${month.name}"؟ سيتم حذف كل الحصص بداخله (بيانات الحضور والمدفوعات القديمة تفضل محفوظة).`)) return;
     try {
@@ -269,7 +293,7 @@ function MonthsView({ group, onOpenMonth }) {
 
   return (
     <div className="space-y-4">
-      {!loadingUnpaid && unpaid.length > 0 && (
+      {!loadingUnpaid && unpaid.length > 0 && canShowUnpaidAlert && (
         <div className="bg-red-50 border border-red-200 rounded-2xl overflow-hidden">
           <button className="w-full flex items-center justify-between gap-3 p-4" onClick={() => setUnpaidOpen(o => !o)}>
             <div className="flex items-center gap-2.5">
