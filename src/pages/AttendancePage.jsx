@@ -241,6 +241,12 @@ function MonthsView({ group, onOpenMonth }) {
   const [loadingUnpaid,setLoadingUnpaid]= useState(true);
   const [unpaidOpen,   setUnpaidOpen]   = useState(false);
 
+  // الطلاب اللي معملوش أي دفعة خالص للشهر الحالي (لسه صفر ج.م) — قائمة منفصلة
+  // عن "باقي عليهم" (اللي دفعوا جزء ولسه ناقصهم مبلغ)
+  const [notPaid,        setNotPaid]        = useState([]);
+  const [loadingNotPaid, setLoadingNotPaid] = useState(true);
+  const [notPaidOpen,    setNotPaidOpen]    = useState(false);
+
   // عدد حصص آخر شهر مضاف (بنستخدمه عشان نأجل ظهور تنبيه "عليهم فلوس"
   // لحد ما يعدي عدد مناسب من الحصص، مش من أول حصة في الشهر)
   const [latestMonthSessionsCount, setLatestMonthSessionsCount] = useState(null);
@@ -259,8 +265,19 @@ function MonthsView({ group, onOpenMonth }) {
           const sData = await sessionsAPI.getAll(latestMonth._id);
           setLatestMonthSessionsCount((sData.sessions || []).length);
         } catch { setLatestMonthSessionsCount(0); }
+
+        // الطلاب اللي معملوش أي دفعة خالص للشهر الحالي (نفس الـ Logic
+        // المستخدم أصلًا في صفحة المدفوعات — بس مقصور على آخر شهر بس)
+        setLoadingNotPaid(true);
+        try {
+          const pData = await paymentsAPI.getGroup({ group: group._id, month: latestMonth.name });
+          setNotPaid((pData.students || []).filter(s => s.totalPaid === 0));
+        } catch { /* اختياري — لا نزعج المدرس برسالة خطأ هنا */ }
+        finally { setLoadingNotPaid(false); }
       } else {
         setLatestMonthSessionsCount(0);
+        setNotPaid([]);
+        setLoadingNotPaid(false);
       }
     } catch { toast.error('فشل تحميل الشهور'); }
     finally { setLoading(false); }
@@ -294,6 +311,33 @@ function MonthsView({ group, onOpenMonth }) {
 
   return (
     <div className="space-y-4">
+      {!loadingNotPaid && notPaid.length > 0 && canShowUnpaidAlert && (
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl overflow-hidden">
+          <button className="w-full flex items-center justify-between gap-3 p-4" onClick={() => setNotPaidOpen(o => !o)}>
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-5 w-5 text-orange-600" />
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-orange-700 text-sm sm:text-base">{notPaid.length} طالب لسه مدفعش خالص</p>
+                <p className="text-xs text-orange-600/80">لم يقم بأي دفعة للشهر الحالي</p>
+              </div>
+            </div>
+            {notPaidOpen ? <ChevronUp className="h-5 w-5 text-orange-500 shrink-0" /> : <ChevronDown className="h-5 w-5 text-orange-500 shrink-0" />}
+          </button>
+          {notPaidOpen && (
+            <div className="border-t border-orange-200 divide-y divide-orange-100 max-h-64 overflow-y-auto">
+              {notPaid.map(s => (
+                <div key={s.student._id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                  <span className="font-medium">{s.student.name}</span>
+                  <span className="font-bold text-orange-600">لم يدفع</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {!loadingUnpaid && unpaid.length > 0 && canShowUnpaidAlert && (
         <div className="bg-red-50 border border-red-200 rounded-2xl overflow-hidden">
           <button className="w-full flex items-center justify-between gap-3 p-4" onClick={() => setUnpaidOpen(o => !o)}>
