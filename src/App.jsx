@@ -85,7 +85,7 @@ function App() {
             {/* TEACHER ROUTES */}
             <Route path="/teacher/home" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><HomePage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/groups" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><GroupsPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/students" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><StudentsPage /></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/students" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><StudentsPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
             <Route path="/attendance" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><AttendancePage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
             {/* صفحة الفلوس — مخفية مؤقتاً، هيتم استبدالها بنظام جديد */}
             {/* <Route path="/payments" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><PaymentsPage /></ProtectedLayout></ProtectedRoute>} /> */}
