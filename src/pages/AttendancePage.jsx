@@ -247,38 +247,63 @@ function MonthsView({ group, onOpenMonth }) {
   const [loadingNotPaid, setLoadingNotPaid] = useState(true);
   const [notPaidOpen,    setNotPaidOpen]    = useState(false);
 
-  // عدد حصص آخر شهر مضاف (بنستخدمه عشان نأجل ظهور تنبيه "عليهم فلوس"
-  // لحد ما يعدي عدد مناسب من الحصص، مش من أول حصة في الشهر)
-  const [latestMonthSessionsCount, setLatestMonthSessionsCount] = useState(null);
+  // بدل ما نعتمد على "آخر شهر" بس (اللي ممكن يسبب مشاكل لو الترتيب مش
+  // مضبوط)، بنجيب عدد الحصص في كل شهر، ونحدد الشهور اللي "استحقت" تنبيه
+  // الدفع (وصلت لعدد الحصص المطلوب) — ده هو اللي بيتحكم في ظهور القائمتين
+  const [hasEligibleMonth, setHasEligibleMonth] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadingNotPaid(true);
     try {
       const data = await monthsAPI.getAll(group._id);
       const monthsList = data.months || [];
       setMonths(monthsList);
 
-      // آخر شهر مضاف = آخر عنصر في القائمة (بترتيب تاريخ الإنشاء تصاعديًا)
-      const latestMonth = monthsList[monthsList.length - 1];
-      if (latestMonth) {
-        try {
-          const sData = await sessionsAPI.getAll(latestMonth._id);
-          setLatestMonthSessionsCount((sData.sessions || []).length);
-        } catch { setLatestMonthSessionsCount(0); }
-
-        // الطلاب اللي معملوش أي دفعة خالص للشهر الحالي (نفس الـ Logic
-        // المستخدم أصلًا في صفحة المدفوعات — بس مقصور على آخر شهر بس)
-        setLoadingNotPaid(true);
-        try {
-          const pData = await paymentsAPI.getGroup({ group: group._id, month: latestMonth.name });
-          setNotPaid((pData.students || []).filter(s => s.totalPaid === 0));
-        } catch { /* اختياري — لا نزعج المدرس برسالة خطأ هنا */ }
-        finally { setLoadingNotPaid(false); }
-      } else {
-        setLatestMonthSessionsCount(0);
+      if (monthsList.length === 0) {
+        setHasEligibleMonth(false);
         setNotPaid([]);
         setLoadingNotPaid(false);
+        return;
       }
+
+      // عدد الحصص المسجلة في كل شهر
+      const monthsWithCounts = await Promise.all(
+        monthsList.map(async (m) => {
+          try {
+            const sData = await sessionsAPI.getAll(m._id);
+            return { month: m, sessionsCount: (sData.sessions || []).length };
+          } catch { return { month: m, sessionsCount: 0 }; }
+        })
+      );
+
+      // الشهور اللي وصلت لعدد الحصص المطلوب (يبقى استحق فيها تنبيه الدفع)
+      const eligibleMonths = monthsWithCounts.filter(x => x.sessionsCount >= MIN_SESSIONS_BEFORE_UNPAID_ALERT);
+      setHasEligibleMonth(eligibleMonths.length > 0);
+
+      if (eligibleMonths.length === 0) {
+        setNotPaid([]);
+        setLoadingNotPaid(false);
+        return;
+      }
+
+      // الطلاب اللي معملوش أي دفعة خالص في أي شهر من الشهور المستحقة —
+      // بنجمعهم من كل الشهور المستحقة مع منع تكرار نفس الطالب
+      try {
+        const results = await Promise.all(
+          eligibleMonths.map(({ month: m }) =>
+            paymentsAPI.getGroup({ group: group._id, month: m.name }).catch(() => ({ students: [] }))
+          )
+        );
+        const map = new Map();
+        results.forEach((r) => {
+          (r.students || []).forEach((s) => {
+            if (s.totalPaid === 0) map.set(s.student._id, s);
+          });
+        });
+        setNotPaid(Array.from(map.values()));
+      } catch { /* اختياري — لا نزعج المدرس برسالة خطأ هنا */ }
+      finally { setLoadingNotPaid(false); }
     } catch { toast.error('فشل تحميل الشهور'); }
     finally { setLoading(false); }
   }, [group._id]);
@@ -294,9 +319,8 @@ function MonthsView({ group, onOpenMonth }) {
 
   useEffect(() => { load(); loadUnpaid(); }, [load, loadUnpaid]);
 
-  // نتأكد إن عدد الحصص في آخر شهر وصل للحد الأدنى قبل عرض تنبيه المتأخرين عن الدفع
-  const canShowUnpaidAlert = latestMonthSessionsCount !== null
-    && latestMonthSessionsCount >= MIN_SESSIONS_BEFORE_UNPAID_ALERT;
+  // نتأكد إن فيه شهر وصل بالفعل لعدد الحصص المطلوب قبل عرض تنبيهات الدفع
+  const canShowUnpaidAlert = hasEligibleMonth;
 
   const handleDelete = async (month) => {
     if (!window.confirm(`حذف شهر "${month.name}"؟ سيتم حذف كل الحصص بداخله (بيانات الحضور والمدفوعات القديمة تفضل محفوظة).`)) return;
