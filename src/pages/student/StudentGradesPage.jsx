@@ -76,7 +76,7 @@ export default function StudentGradesPage() {
         {/* Modern Modern Header Area */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
           <div className="space-y-1.5">
-            <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50">أدائي الأكاديمي</h2>
+            <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50">درجاتي</h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
               تابِع نتائج اختباراتك الدورية وتقييم درجاتك أولاً بأول.
             </p>

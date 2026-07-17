@@ -35,10 +35,10 @@ export default function StudentSchedulePage() {
               </div>
               <div>
                 <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-                  أجندة الحصص الدراسيّة
+                  جدولي الدراسي
                 </h2>
                 <p className="text-muted-foreground text-sm mt-1 font-medium">
-                  متابعة ذكية لمواعيد مجموعاتك الأكاديمية ونشاطك القادم
+                  مواعيد الحصص الخاصة بك
                 </p>
               </div>
             </div>
