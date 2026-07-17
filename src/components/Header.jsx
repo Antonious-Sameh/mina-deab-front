@@ -102,7 +102,7 @@ export default function Header({ onMenuClick }) {
           <div className="hidden sm:flex flex-col items-end text-right pl-2 border-l border-border/60 ml-2">
             <span className="text-sm font-bold text-foreground/90 tracking-wide">{user?.name}</span>
             <span className="text-xs font-medium text-muted-foreground/80 mt-0.5 px-2 py-0.5 bg-muted rounded-full">
-              {user?.role === 'teacher' ? 'مستشار المادة' : 'طالب علم'}
+              {user?.role === 'teacher' ? 'المدرس' : 'طالب '}
             </span>
           </div>
 
