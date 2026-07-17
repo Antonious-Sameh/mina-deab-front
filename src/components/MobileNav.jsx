@@ -81,30 +81,29 @@ export default function MobileNav({ open, onClose }) {
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-72 p-0 flex flex-col">
-        {/* الجزء المعدل: تم إضافة الجملة تحت العنوان للموبايل */}
-        <SheetHeader className="border-b p-6 text-right shrink-0 gap-1">
-          <SheetTitle className="text-lg font-bold text-primary">
+      <SheetContent 
+        side="right" 
+        className="w-80 p-0 flex flex-col bg-background border-l border-border/40 selection:bg-primary/10 backdrop-blur-md"
+      >
+        <SheetDescription className="hidden">
+          Navigation Menu
+        </SheetDescription>
+
+        {/* Header Section: Modern Glassmorphism Accent */}
+        <SheetHeader className="p-6 text-right shrink-0 relative overflow-hidden bg-gradient-to-b from-muted/30 to-transparent border-b border-border/50">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-6 -mt-6" />
+          <SheetTitle className="text-xl font-extrabold tracking-tight text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
             {isTeacher ? "نظام الأستاذ مينا دياب" : "منصة الإبداع"}
           </SheetTitle>
-          {!isTeacher && (
-            <div className="mt-2 bg-gradient-to-l from-primary/10 to-transparent border-r-2 border-primary pr-3 py-1.5 rounded-l-md">
-              <p className="text-[11px] sm:text-xs font-semibold text-primary/90 leading-relaxed">
-                دي مش رياضة... دي مزيكا 🎵
-              </p>
-            </div>
-          )}
-          <SheetDescription className="hidden">
-            Navigation Menu
-          </SheetDescription>
         </SheetHeader>
 
-        <nav className="p-4 flex-1 overflow-y-auto">
+        {/* Navigation Body: Modern Floating Cards Design */}
+        <nav className="p-5 flex-1 overflow-y-auto space-y-6 scrollbar-none">
           {isTeacher ? (
             <div className="space-y-6">
               {TEACHER_GROUPS.map((group, index) => (
                 <React.Fragment key={group.id}>
-                  <div className="space-y-1">
+                  <div className="space-y-2 bg-muted/20 p-2.5 rounded-2xl border border-border/30">
                     {group.items.map((item) => {
                       const Icon = item.icon;
                       return (
@@ -114,27 +113,28 @@ export default function MobileNav({ open, onClose }) {
                           onClick={onClose}
                           className={({ isActive }) =>
                             cn(
-                              "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
+                              "flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 ease-out group relative overflow-hidden",
                               isActive
-                                ? "bg-primary text-primary-foreground shadow-sm"
-                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                                ? "bg-primary text-primary-foreground shadow-md shadow-primary/10 font-semibold scale-[1.01]"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
                             )
                           }
                         >
-                          <Icon className="h-5 w-5 shrink-0" />
-                          <span>{item.label}</span>
+                          <Icon className={cn(
+                            "h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-110",
+                            "opacity-90 group-[.active]:opacity-100"
+                          )} />
+                          <span className="relative z-10 tracking-wide">{item.label}</span>
                         </NavLink>
                       );
                     })}
                   </div>
-                  {index < TEACHER_GROUPS.length - 1 && (
-                    <div className="border-t border-border mx-2" />
-                  )}
                 </React.Fragment>
               ))}
             </div>
           ) : (
-            <div className="space-y-1">
+            /* Student Section: Sleek Single Dashboard Container */
+            <div className="bg-muted/20 p-2.5 rounded-2xl border border-border/30 space-y-1.5">
               {STUDENT_NAV.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -144,21 +144,36 @@ export default function MobileNav({ open, onClose }) {
                     onClick={onClose}
                     className={({ isActive }) =>
                       cn(
-                        "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
+                        "flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 ease-out group relative overflow-hidden",
                         isActive
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/10 font-semibold scale-[1.01]"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       )
                     }
                   >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    <span>{item.label}</span>
+                    <Icon className={cn(
+                      "h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-110",
+                      "opacity-90 group-[.active]:opacity-100"
+                    )} />
+                    <span className="relative z-10 tracking-wide">{item.label}</span>
                   </NavLink>
                 );
               })}
             </div>
           )}
         </nav>
+
+        {/* Footer Section: Transformed Floating Motivational Card */}
+        {!isTeacher && (
+          <div className="p-5 mt-auto border-t border-border/40 bg-gradient-to-t from-muted/40 to-transparent">
+            <div className="relative overflow-hidden bg-gradient-to-br from-primary/[0.07] via-primary/[0.03] to-transparent border border-primary/10 rounded-2xl p-4 text-right shadow-sm">
+              <div className="absolute -left-4 -bottom-4 w-16 h-16 bg-primary/5 rounded-full blur-xl" />
+              <p className="text-xs font-bold text-primary tracking-wide leading-relaxed">
+                دي مش رياضة... دي مزيكا 🎵
+              </p>
+            </div>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );

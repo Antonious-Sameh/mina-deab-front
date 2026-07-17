@@ -22,16 +22,30 @@ const PAGE_TITLES = {
   '/student/heroes':'أبطال مروا من هنا','/student/account':'الحساب',
 };
 
-// Avatar component — shows image or initials
+// الـ Avatar بشكلها العصري الجديد مع الحفاظ على نفس البارامترات والـ Logic
 function UserAvatar({ name, avatarUrl, size = 'md' }) {
-  const sz       = size === 'md' ? 'h-9 w-9 text-sm' : 'h-8 w-8 text-xs';
+  const sz = size === 'md' ? 'h-10 w-10 text-sm' : 'h-8 w-8 text-xs';
   const initials = name?.split(' ').slice(0,2).map(w => w[0]).join('') || '?';
+  
   if (avatarUrl) {
-    return <img src={avatarUrl} alt={name} className={`${sz} rounded-full object-cover border-2 border-primary/20 shadow-sm`} />;
+    return (
+      <div className="relative inline-block tracking-wide">
+        <img 
+          src={avatarUrl} 
+          alt={name} 
+          className={`${sz} rounded-xl object-cover ring-2 ring-primary/10 hover:ring-primary/30 shadow-sm transition-all duration-300`} 
+        />
+        <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
+      </div>
+    );
   }
+  
   return (
-    <div className={`${sz} rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center border-2 border-primary/20`}>
-      {initials}
+    <div className="relative inline-block">
+      <div className={`${sz} rounded-xl bg-gradient-to-br from-primary/90 to-primary text-primary-foreground font-bold flex items-center justify-center shadow-md shadow-primary/10 transition-all duration-300`}>
+        {initials}
+      </div>
+      <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
     </div>
   );
 }
@@ -43,9 +57,9 @@ export default function Header({ onMenuClick }) {
   const { theme, toggleTheme } = useTheme();
   const { unreadCount } = useNotifications();
 
-  // For students: fetch teacher's avatar
   const [teacherAvatar, setTeacherAvatar] = useState(null);
   const [teacherName,   setTeacherName]   = useState(null);
+  
   useEffect(() => {
     if (user?.role !== 'student') return;
     api.get('/account/teacher-info').then(r => {
@@ -56,54 +70,93 @@ export default function Header({ onMenuClick }) {
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
-  // What to show in top-right
   const displayAvatar = user?.role === 'teacher' ? user.avatar : teacherAvatar;
   const displayName   = user?.role === 'teacher' ? user.name  : teacherName;
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur-sm">
-      <div className="flex h-16 items-center gap-4 px-4 lg:px-6">
-        <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
-          <Menu className="h-5 w-5" />
-        </Button>
-
-        <h1 className="text-xl font-bold truncate">
-          {PAGE_TITLES[location.pathname] || 'لوحة التحكم'}
-        </h1>
-
-        <div className="mr-auto flex items-center gap-2">
-          <div className="hidden md:flex flex-col text-left">
-            <span className="text-sm font-semibold leading-tight">{user?.name}</span>
-            <span className="text-xs text-muted-foreground">{user?.role === 'teacher' ? 'مدرس' : 'طالب'}</span>
-          </div>
-
-          <Button variant="ghost" size="icon" onClick={toggleTheme}>
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-md transition-all duration-300">
+      <div className="flex h-20 items-center justify-between px-6 lg:px-8 max-w-[1600px] mx-auto">
+        
+        {/* الجزء الأيمن: القائمة وعنوان الصفحة بتوزيع مريح وعصري */}
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="secondary" 
+            size="icon" 
+            className="lg:hidden h-10 w-10 rounded-xl bg-muted/60 hover:bg-muted" 
+            onClick={onMenuClick}
+          >
+            <Menu className="h-5 w-5 text-foreground/80" />
           </Button>
 
-          <div className="relative">
-            <Button variant="ghost" size="icon" onClick={() => navigate(user?.role === 'student' ? '/student/notes' : '#')}>
-              <Bell className="h-5 w-5" />
+          <div className="flex flex-col gap-0.5">
+            <h1 className="text-xl lg:text-2xl font-black tracking-tight bg-gradient-to-l from-foreground to-foreground/80 bg-clip-text text-transparent">
+              {PAGE_TITLES[location.pathname] || 'لوحة التحكم'}
+            </h1>
+          </div>
+        </div>
+
+        {/* الجزء الأيسر: تم تعديل الـ Layout بالكامل إلى (ml-auto لـ RTL) لتنظيم الأدوات */}
+        <div className="ml-0 mr-auto flex items-center gap-3 lg:gap-4">
+          
+          {/* بيانات المستخدم الحالية بتصميم تايبوجرافي أنظف */}
+          <div className="hidden sm:flex flex-col items-end text-right pl-2 border-l border-border/60 ml-2">
+            <span className="text-sm font-bold text-foreground/90 tracking-wide">{user?.name}</span>
+            <span className="text-xs font-medium text-muted-foreground/80 mt-0.5 px-2 py-0.5 bg-muted rounded-full">
+              {user?.role === 'teacher' ? 'مستشار المادة' : 'طالب علم'}
+            </span>
+          </div>
+
+          {/* مركز التحكم بالأزرار (تأثيرات حركية خفيفة وأشكال دائرية ناعمة Rounded-xl) */}
+          <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-2xl border border-border/20">
+            
+            {/* زر المظهر */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-9 w-9 rounded-xl hover:bg-background hover:shadow-sm text-muted-foreground hover:text-foreground transition-all"
+              onClick={toggleTheme}
+            >
+              {theme === 'dark' ? <Sun className="h-[18px] w-[18px] text-amber-500" /> : <Moon className="h-[18px] w-[18px] text-indigo-500" />}
             </Button>
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
+
+            {/* زر الإشعارات المطور */}
+            <div className="relative">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 rounded-xl hover:bg-background hover:shadow-sm text-muted-foreground hover:text-foreground transition-all"
+                onClick={() => navigate(user?.role === 'student' ? '/student/notes' : '#')}
+              >
+                <Bell className="h-[18px] w-[18px]" />
+              </Button>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-black text-destructive-foreground ring-2 ring-background animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </div>
+
+            {/* زر تسجيل الخروج */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-9 w-9 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+              onClick={handleLogout} 
+              title="تسجيل الخروج"
+            >
+              <LogOut className="h-[18px] w-[18px]" />
+            </Button>
           </div>
 
-          <Button variant="ghost" size="icon" onClick={handleLogout} title="تسجيل الخروج">
-            <LogOut className="h-5 w-5 text-destructive" />
-          </Button>
-
-          {/* Avatar — teacher sees their own, students see teacher's */}
+          {/* زر الـ Avatar التفاعلي الكامل */}
           <button
             onClick={() => navigate(user?.role === 'teacher' ? '/teacher/account' : '/student/account')}
-            className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="rounded-xl p-0.5 focus:outline-none focus:ring-2 focus:ring-primary/30 hover:scale-105 transition-transform duration-200"
             title={user?.role === 'teacher' ? 'حسابي' : `منصة ${displayName || ''}`}
           >
             <UserAvatar name={displayName || user?.name} avatarUrl={displayAvatar} />
           </button>
+          
         </div>
       </div>
     </header>
