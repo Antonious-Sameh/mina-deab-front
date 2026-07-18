@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   Plus, Edit, KeyRound, Users, Ban, CheckCircle2, Trash2,
@@ -319,6 +319,104 @@ function ConfirmDelete({ student, onClose, onDeleted }) {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Student Row (memoized) ──────────────────────────────────────────────────
+// Extracted from the inline .map() so React.memo can stop unrelated rows from
+// re-rendering while one row is being edited (e.g. typing in the ID field
+// used to re-render the entire group's table on every keystroke).
+// idDraft is only passed a real value for the row currently being edited —
+// all other rows always receive the same stable value, so memo skips them.
+const StudentRow = memo(function StudentRow({
+  student, isEditing, idDraft, savingId,
+  onStartEditId, onCancelEditId, onChangeIdDraft, onSaveEditId,
+  onEdit, onResetCode, onToggle, onDelete,
+}) {
+  return (
+    <tr className="hover:bg-background transition-colors">
+      <td className="px-6 py-4 font-bold">{student.name}</td>
+      <td className="px-6 py-4">
+        {isEditing ? (
+          <div className="flex items-center gap-1.5">
+            <Input
+              value={idDraft}
+              onChange={e => onChangeIdDraft(e.target.value)}
+              placeholder="اكتب ID"
+              inputMode="numeric"
+              autoFocus
+              className="w-24 h-8 text-xs font-mono"
+              onKeyDown={e => { if (e.key === 'Enter') onSaveEditId(student); if (e.key === 'Escape') onCancelEditId(); }}
+            />
+            <button
+              className="h-7 w-7 rounded-md flex items-center justify-center text-green-600 hover:bg-green-50 disabled:opacity-50"
+              onClick={() => onSaveEditId(student)}
+              disabled={savingId}
+              title="حفظ"
+            >
+              {savingId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+            </button>
+            <button
+              className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted"
+              onClick={onCancelEditId}
+              disabled={savingId}
+              title="إلغاء"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground group/id"
+            onClick={() => onStartEditId(student)}
+            title="تعديل الـ ID"
+          >
+            <span>{student.studentId ?? '—'}</span>
+            <Edit className="h-3 w-3 opacity-0 group-hover/id:opacity-60 transition-opacity" />
+          </button>
+        )}
+      </td>
+      <td className="px-6 py-4 font-mono text-muted-foreground text-xs">{student.codePlain}</td>
+      <td className="px-6 py-4">
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+          student.isActive
+            ? 'bg-green-100 text-green-700'
+            : 'bg-red-100 text-red-700'
+        }`}>
+          {student.isActive ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+          {student.isActive ? 'نشط' : 'معطل'}
+        </span>
+      </td>
+      <td className="px-6 py-4 text-left">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>خيارات الطالب</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => onEdit(student)}>
+              <Edit className="h-4 w-4" /> تعديل البيانات
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => onResetCode(student)}>
+              <KeyRound className="h-4 w-4" /> تغيير الكود
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className={`gap-2 cursor-pointer ${student.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}`}
+              onClick={() => onToggle(student)}
+            >
+              {student.isActive ? <><Ban className="h-4 w-4" /> تعليق الحساب</> : <><CheckCircle2 className="h-4 w-4" /> تفعيل الحساب</>}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive cursor-pointer" onClick={() => onDelete(student)}>
+              <Trash2 className="h-4 w-4" /> حذف نهائي
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </td>
+    </tr>
+  );
+});
+
 export default function StudentsPage() {
   const [students,  setStudents]  = useState([]);
   const [groups,    setGroups]    = useState([]);
@@ -333,20 +431,28 @@ export default function StudentsPage() {
   const [idDraft,       setIdDraft]     = useState('');
   const [savingId,      setSavingId]    = useState(false);
 
-  const startEditId = (student) => {
+  // Kept in sync with idDraft so saveEditId can read the latest value without
+  // depending on idDraft itself — otherwise saveEditId's identity would change
+  // on every keystroke, which would defeat the point of memoizing StudentRow
+  // below (every row receives the same onSaveEditId callback prop).
+  const idDraftRef = useRef('');
+  useEffect(() => { idDraftRef.current = idDraft; }, [idDraft]);
+
+  const startEditId = useCallback((student) => {
     setEditingIdFor(student._id);
     setIdDraft(student.studentId ?? '');
-  };
+  }, []);
 
-  const cancelEditId = () => {
+  const cancelEditId = useCallback(() => {
     setEditingIdFor(null);
     setIdDraft('');
-  };
+  }, []);
 
-  const saveEditId = async (student) => {
+  const saveEditId = useCallback(async (student) => {
     setSavingId(true);
     try {
-      const data = await studentsAPI.update(student._id, { studentId: idDraft.trim() === '' ? null : idDraft });
+      const draft = idDraftRef.current;
+      const data = await studentsAPI.update(student._id, { studentId: draft.trim() === '' ? null : draft });
       setStudents(prev => prev.map(s => s._id === student._id ? { ...s, studentId: data.student.studentId } : s));
       toast.success('تم حفظ الـ ID بنجاح');
       setEditingIdFor(null);
@@ -354,7 +460,7 @@ export default function StudentsPage() {
     } catch (err) {
       toast.error(err?.response?.data?.message || 'فشل حفظ الـ ID');
     } finally { setSavingId(false); }
-  };
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -386,7 +492,9 @@ export default function StudentsPage() {
 
   useEffect(() => { load(); }, []);
 
-  const handleToggle = async (student) => {
+  const handleEditStudent = useCallback((student) => setModal({ student }), []);
+
+  const handleToggle = useCallback(async (student) => {
     try {
       await studentsAPI.toggleStatus(student._id);
       toast.success(student.isActive ? 'تم تعليق الحساب' : 'تم تفعيل الحساب');
@@ -394,7 +502,7 @@ export default function StudentsPage() {
     } catch (err) {
       toast.error(err?.response?.data?.message || 'فشلت العملية');
     }
-  };
+  }, []);
 
   // Filter + group
   const filtered = useMemo(() => {
@@ -514,89 +622,21 @@ export default function StudentsPage() {
                               </thead>
                               <tbody className="divide-y divide-border/50">
                                 {grpStudents.map(student => (
-                                  <tr key={student._id} className="hover:bg-background transition-colors">
-                                    <td className="px-6 py-4 font-bold">{student.name}</td>
-                                    <td className="px-6 py-4">
-                                      {editingIdFor === student._id ? (
-                                        <div className="flex items-center gap-1.5">
-                                          <Input
-                                            value={idDraft}
-                                            onChange={e => setIdDraft(e.target.value)}
-                                            placeholder="اكتب ID"
-                                            inputMode="numeric"
-                                            autoFocus
-                                            className="w-24 h-8 text-xs font-mono"
-                                            onKeyDown={e => { if (e.key === 'Enter') saveEditId(student); if (e.key === 'Escape') cancelEditId(); }}
-                                          />
-                                          <button
-                                            className="h-7 w-7 rounded-md flex items-center justify-center text-green-600 hover:bg-green-50 disabled:opacity-50"
-                                            onClick={() => saveEditId(student)}
-                                            disabled={savingId}
-                                            title="حفظ"
-                                          >
-                                            {savingId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                                          </button>
-                                          <button
-                                            className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted"
-                                            onClick={cancelEditId}
-                                            disabled={savingId}
-                                            title="إلغاء"
-                                          >
-                                            <X className="h-3.5 w-3.5" />
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <button
-                                          className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground group/id"
-                                          onClick={() => startEditId(student)}
-                                          title="تعديل الـ ID"
-                                        >
-                                          <span>{student.studentId ?? '—'}</span>
-                                          <Edit className="h-3 w-3 opacity-0 group-hover/id:opacity-60 transition-opacity" />
-                                        </button>
-                                      )}
-                                    </td>
-                                    <td className="px-6 py-4 font-mono text-muted-foreground text-xs">{student.codePlain}</td>
-                                    <td className="px-6 py-4">
-                                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                                        student.isActive
-                                          ? 'bg-green-100 text-green-700'
-                                          : 'bg-red-100 text-red-700'
-                                      }`}>
-                                        {student.isActive ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
-                                        {student.isActive ? 'نشط' : 'معطل'}
-                                      </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-left">
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <MoreVertical className="h-4 w-4" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-48">
-                                          <DropdownMenuLabel>خيارات الطالب</DropdownMenuLabel>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => setModal({ student })}>
-                                            <Edit className="h-4 w-4" /> تعديل البيانات
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => setResetting(student)}>
-                                            <KeyRound className="h-4 w-4" /> تغيير الكود
-                                          </DropdownMenuItem>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem
-                                            className={`gap-2 cursor-pointer ${student.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}`}
-                                            onClick={() => handleToggle(student)}
-                                          >
-                                            {student.isActive ? <><Ban className="h-4 w-4" /> تعليق الحساب</> : <><CheckCircle2 className="h-4 w-4" /> تفعيل الحساب</>}
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive cursor-pointer" onClick={() => setDeleting(student)}>
-                                            <Trash2 className="h-4 w-4" /> حذف نهائي
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </td>
-                                  </tr>
+                                  <StudentRow
+                                    key={student._id}
+                                    student={student}
+                                    isEditing={editingIdFor === student._id}
+                                    idDraft={editingIdFor === student._id ? idDraft : ''}
+                                    savingId={savingId}
+                                    onStartEditId={startEditId}
+                                    onCancelEditId={cancelEditId}
+                                    onChangeIdDraft={setIdDraft}
+                                    onSaveEditId={saveEditId}
+                                    onEdit={handleEditStudent}
+                                    onResetCode={setResetting}
+                                    onToggle={handleToggle}
+                                    onDelete={setDeleting}
+                                  />
                                 ))}
                               </tbody>
                             </table>

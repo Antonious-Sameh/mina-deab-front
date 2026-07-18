@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   Loader2, Save, ClipboardList, Monitor, Users, ChevronLeft, Folder
@@ -202,6 +202,33 @@ function ElectronicGrades() {
 // إنشاء/تعديل/حذف الامتحان الورقي نفسه يفضل من صفحة الامتحانات فقط.
 // ══════════════════════════════════════════════════════
 
+// ── Paper Grade Row (memoized) ──────────────────────────────────────────────
+// Extracted from the inline .map() so React.memo can stop unrelated rows from
+// re-rendering while the teacher types a grade for one student — previously
+// every keystroke re-rendered the entire sheet (all rows, even "كل المجموعات").
+const PaperGradeRow = memo(function PaperGradeRow({ row, index, value, maxScore, isClosed, onChange }) {
+  const pct = value !== undefined && value !== '' && maxScore > 0 ? Math.round((Number(value) / maxScore) * 100) : null;
+  return (
+    <tr className="hover:bg-muted/20">
+      <td className="px-4 py-2.5 text-muted-foreground">{index + 1}</td>
+      <td className="px-4 py-2.5 font-bold">{row.student.name}</td>
+      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.student.studentId ?? '—'}</td>
+      <td className="px-4 py-2.5">
+        <Input
+          type="number" min="0" max={maxScore||999}
+          value={value ?? ''}
+          onChange={e => onChange(row.student._id, e.target.value)}
+          placeholder="—" className="w-24 h-8 text-sm text-center"
+          disabled={isClosed}
+        />
+      </td>
+      <td className="px-4 py-2.5">
+        {pct!==null && <span className={`font-bold text-sm ${pct>=50?'text-green-600':'text-red-500'}`}>{pct}%</span>}
+      </td>
+    </tr>
+  );
+});
+
 function PaperExamGradeSheet({ exam, year, group, onBack }) {
   const [sheet,   setSheet]   = useState(null);
   const [scores,  setScores]  = useState({});
@@ -262,6 +289,10 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
 
   const isClosed = sheet?.exam?.status === 'closed';
 
+  const onScoreChange = useCallback((studentId, value) => {
+    setScores(p => ({ ...p, [studentId]: value }));
+  }, []);
+
   const handleSaveAll = async () => {
     setSaving(true);
     try {
@@ -312,29 +343,17 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {groupRows.map((row,i)=>{
-                  const val = scores[row.student._id];
-                  const pct = val!==undefined && val!=='' && exam.maxScore>0 ? Math.round((Number(val)/exam.maxScore)*100) : null;
-                  return (
-                    <tr key={row.student._id} className="hover:bg-muted/20">
-                      <td className="px-4 py-2.5 text-muted-foreground">{i+1}</td>
-                      <td className="px-4 py-2.5 font-bold">{row.student.name}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.student.studentId ?? '—'}</td>
-                      <td className="px-4 py-2.5">
-                        <Input
-                          type="number" min="0" max={exam.maxScore||999}
-                          value={val ?? ''}
-                          onChange={e => setScores(p=>({...p,[row.student._id]:e.target.value}))}
-                          placeholder="—" className="w-24 h-8 text-sm text-center"
-                          disabled={isClosed}
-                        />
-                      </td>
-                      <td className="px-4 py-2.5">
-                        {pct!==null && <span className={`font-bold text-sm ${pct>=50?'text-green-600':'text-red-500'}`}>{pct}%</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {groupRows.map((row,i)=>(
+                  <PaperGradeRow
+                    key={row.student._id}
+                    row={row}
+                    index={i}
+                    value={scores[row.student._id]}
+                    maxScore={exam.maxScore}
+                    isClosed={isClosed}
+                    onChange={onScoreChange}
+                  />
+                ))}
               </tbody>
             </table>
           </div>

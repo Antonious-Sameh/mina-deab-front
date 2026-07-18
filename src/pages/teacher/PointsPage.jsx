@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   Star, Plus, Minus, Loader2, Search, X, Save, Trophy,
@@ -90,6 +90,64 @@ function ActionPopover({ student, onDone }) {
   );
 }
 
+// ── Leaderboard Row (memoized) ──────────────────────────────────────────────
+// Extracted from the inline .map() so React.memo can stop unrelated rows from
+// re-rendering every time the teacher opens/closes one student's action popover.
+const PointsLeaderboardRow = memo(function PointsLeaderboardRow({ s, idx, sid, isActive, onToggleActive, onDone }) {
+  const bal   = s.balance;
+  const isTop = idx < 3 && bal > 0;
+
+  return (
+    <tr className={`hover:bg-muted/20 transition-colors ${
+      idx===0&&bal>0 ? 'bg-yellow-50/40' :
+      idx===1&&bal>0 ? 'bg-slate-50/30'  :
+      idx===2&&bal>0 ? 'bg-orange-50/30'  : ''
+    }`}>
+      {/* Rank */}
+      <td className="px-4 py-3 text-center">
+        {isTop
+          ? <span className="text-base">{idx===0?'🥇':idx===1?'🥈':'🥉'}</span>
+          : <span className="text-xs text-muted-foreground font-bold">{idx+1}</span>}
+      </td>
+
+      {/* Name */}
+      <td className="px-4 py-3 font-bold">{s.name}</td>
+
+      {/* Code */}
+      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{s.codePlain}</td>
+
+      {/* Balance */}
+      <td className="px-4 py-3 text-center">
+        <span className={`text-lg font-black ${bal > 0 ? 'text-primary' : bal < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+          {bal > 0 ? '+' : ''}{bal}
+        </span>
+      </td>
+
+      {/* Actions */}
+      <td className="px-4 py-3">
+        <div className="flex items-center justify-center gap-1.5 relative">
+          <button
+            onClick={e => { e.stopPropagation(); onToggleActive(sid); }}
+            className="flex items-center gap-1 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg px-3 py-1.5 text-xs font-bold transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5"/>
+            <Minus className="h-3.5 w-3.5"/>
+            إدارة
+          </button>
+
+          {/* Popover */}
+          {isActive && (
+            <ActionPopover
+              student={s}
+              onDone={onDone}
+            />
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+});
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PointsPage() {
   const [year,     setYear]     = useState('');
@@ -173,10 +231,14 @@ export default function PointsPage() {
   }, [active]);
 
   // Update balance after action — no reload needed
-  const handlePointDone = (studentId, delta) => {
+  const handlePointDone = useCallback((studentId, delta) => {
     setBalances(prev => ({ ...prev, [studentId]: (prev[studentId] || 0) + delta }));
     setActive(null);
-  };
+  }, []);
+
+  const onToggleActive = useCallback((sid) => {
+    setActive(prev => (prev === sid ? null : sid));
+  }, []);
 
   // Filter by search
   const filtered = useMemo(() => {
@@ -296,58 +358,17 @@ export default function PointsPage() {
                 </thead>
                 <tbody className="divide-y">
                   {filtered.map((s, idx) => {
-                    const bal   = s.balance;
-                    const isTop = idx < 3 && bal > 0;
-                    const sid   = s._id?.toString();
-
+                    const sid = s._id?.toString();
                     return (
-                      <tr key={sid} className={`hover:bg-muted/20 transition-colors ${
-                        idx===0&&bal>0 ? 'bg-yellow-50/40' :
-                        idx===1&&bal>0 ? 'bg-slate-50/30'  :
-                        idx===2&&bal>0 ? 'bg-orange-50/30'  : ''
-                      }`}>
-                        {/* Rank */}
-                        <td className="px-4 py-3 text-center">
-                          {isTop
-                            ? <span className="text-base">{idx===0?'🥇':idx===1?'🥈':'🥉'}</span>
-                            : <span className="text-xs text-muted-foreground font-bold">{idx+1}</span>}
-                        </td>
-
-                        {/* Name */}
-                        <td className="px-4 py-3 font-bold">{s.name}</td>
-
-                        {/* Code */}
-                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{s.codePlain}</td>
-
-                        {/* Balance */}
-                        <td className="px-4 py-3 text-center">
-                          <span className={`text-lg font-black ${bal > 0 ? 'text-primary' : bal < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                            {bal > 0 ? '+' : ''}{bal}
-                          </span>
-                        </td>
-
-                        {/* Actions */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-1.5 relative">
-                            <button
-                              onClick={e => { e.stopPropagation(); setActive(active === sid ? null : sid); }}
-                              className="flex items-center gap-1 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg px-3 py-1.5 text-xs font-bold transition-colors"
-                            >
-                              <Plus className="h-3.5 w-3.5"/>
-                              <Minus className="h-3.5 w-3.5"/>
-                              إدارة
-                            </button>
-
-                            {/* Popover */}
-                            {active === sid && (
-                              <ActionPopover
-                                student={s}
-                                onDone={handlePointDone}
-                              />
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+                      <PointsLeaderboardRow
+                        key={sid}
+                        s={s}
+                        idx={idx}
+                        sid={sid}
+                        isActive={active === sid}
+                        onToggleActive={onToggleActive}
+                        onDone={handlePointDone}
+                      />
                     );
                   })}
                 </tbody>

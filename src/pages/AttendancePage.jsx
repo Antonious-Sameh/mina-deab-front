@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   Check, X, Save, ClipboardCheck, Loader2, AlertCircle,
@@ -542,6 +542,85 @@ function SessionsView({ month, group, onBack, onOpenSession }) {
 // LEVEL 5 — SESSION SHEET (الطالب | ID | حضور | غياب | دفع | باقي)
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ── Attendance Sheet Row (memoized) ─────────────────────────────────────────
+// Extracted from the inline .map() so React.memo can stop unrelated rows from
+// re-rendering while the teacher types a payment amount for one student —
+// previously every keystroke re-rendered the entire sheet (all rows).
+const AttendanceSheetRow = memo(function AttendanceSheetRow({
+  row, index, busy, isPaying, payAmount,
+  onMark, onPayAmountChange, onPay, onEditPayment,
+}) {
+  const isPresent = row.status === 'present';
+  const isAbsent  = row.status === 'absent';
+  const isPaid    = row.payment.isPaid;
+
+  return (
+    <tr className="hover:bg-muted/20">
+      <td className="px-3 py-2.5 text-muted-foreground">{index + 1}</td>
+      <td className="px-3 py-2.5 font-bold">{row.student.name}</td>
+      <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">{row.student.studentId ?? '—'}</td>
+      <td className="px-3 py-2.5 text-center">
+        <button
+          disabled={busy}
+          onClick={() => onMark(row.student._id, 'present')}
+          className={`w-9 h-9 rounded-lg inline-flex items-center justify-center transition-all disabled:opacity-50 ${
+            isPresent ? 'bg-green-500 text-white shadow-sm' : 'border border-green-500/30 text-green-600 hover:bg-green-500/10'
+          }`}
+        ><Check className="h-4 w-4 stroke-[2.5]" /></button>
+      </td>
+      <td className="px-3 py-2.5 text-center">
+        <button
+          disabled={busy}
+          onClick={() => onMark(row.student._id, 'absent')}
+          className={`w-9 h-9 rounded-lg inline-flex items-center justify-center transition-all disabled:opacity-50 ${
+            isAbsent ? 'bg-red-500 text-white shadow-sm' : 'border border-red-500/30 text-red-600 hover:bg-red-500/10'
+          }`}
+        ><X className="h-4 w-4 stroke-[2.5]" /></button>
+      </td>
+      <td className="px-3 py-2.5">
+        {isPaid ? (
+          <button
+            className="flex items-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 rounded-lg px-2.5 py-1.5 hover:bg-green-100 transition-colors"
+            onClick={() => onEditPayment({ studentId: row.student._id, studentName: row.student.name })}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" /> مدفوع بالكامل
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="number" min="1" placeholder="المبلغ"
+              value={payAmount}
+              onChange={e => onPayAmountChange(row.student._id, e.target.value)}
+              className="w-24 h-8 text-xs"
+            />
+            <Button
+              size="sm" className="h-8 px-2.5 text-xs gap-1"
+              disabled={isPaying}
+              onClick={() => onPay(row, payAmount)}
+            >
+              {isPaying ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wallet className="h-3 w-3" />}
+              دفع
+            </Button>
+            {row.payment.paidAmount > 0 && (
+              <button
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => onEditPayment({ studentId: row.student._id, studentName: row.student.name })}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+      </td>
+      <td className="px-3 py-2.5">
+        <span className={`font-bold text-sm ${row.payment.remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          {row.payment.remainingAmount} ج.م
+        </span>
+      </td>
+    </tr>
+  );
+});
+
 function SessionSheetView({ session, month, group, onBack }) {
   const [sheet,      setSheet]      = useState([]);
   const [loading,    setLoading]    = useState(true);
@@ -561,7 +640,7 @@ function SessionSheetView({ session, month, group, onBack }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const mark = async (studentId, status) => {
+  const mark = useCallback(async (studentId, status) => {
     setSavingId(studentId);
     setSheet(prev => prev.map(r => (r.student._id === studentId ? { ...r, status } : r)));
     try {
@@ -570,10 +649,9 @@ function SessionSheetView({ session, month, group, onBack }) {
       toast.error(err?.response?.data?.message || 'فشل حفظ الحضور');
       load();
     } finally { setSavingId(null); }
-  };
+  }, [session._id, load]);
 
-  const handlePay = async (row) => {
-    const amountStr = payAmounts[row.student._id];
+  const handlePay = useCallback(async (row, amountStr) => {
     const amount = Number(amountStr);
     if (!amountStr || amount <= 0) { toast.error('أدخل مبلغاً صحيحاً'); return; }
     setPayingId(row.student._id);
@@ -603,7 +681,11 @@ function SessionSheetView({ session, month, group, onBack }) {
     } catch (err) {
       toast.error(err?.response?.data?.message || 'فشل تسجيل الدفعة');
     } finally { setPayingId(null); }
-  };
+  }, [month, group]);
+
+  const onPayAmountChange = useCallback((studentId, value) => {
+    setPayAmounts(prev => ({ ...prev, [studentId]: value }));
+  }, []);
 
   const presentCount = sheet.filter(r => r.status === 'present').length;
   const absentCount  = sheet.filter(r => r.status === 'absent').length;
@@ -647,77 +729,20 @@ function SessionSheetView({ session, month, group, onBack }) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {sheet.map((row, i) => {
-                  const isPresent = row.status === 'present';
-                  const isAbsent  = row.status === 'absent';
-                  const isPaid    = row.payment.isPaid;
-                  const busy      = savingId === row.student._id;
-                  return (
-                    <tr key={row.student._id} className="hover:bg-muted/20">
-                      <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
-                      <td className="px-3 py-2.5 font-bold">{row.student.name}</td>
-                      <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">{row.student.studentId ?? '—'}</td>
-                      <td className="px-3 py-2.5 text-center">
-                        <button
-                          disabled={busy}
-                          onClick={() => mark(row.student._id, 'present')}
-                          className={`w-9 h-9 rounded-lg inline-flex items-center justify-center transition-all disabled:opacity-50 ${
-                            isPresent ? 'bg-green-500 text-white shadow-sm' : 'border border-green-500/30 text-green-600 hover:bg-green-500/10'
-                          }`}
-                        ><Check className="h-4 w-4 stroke-[2.5]" /></button>
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        <button
-                          disabled={busy}
-                          onClick={() => mark(row.student._id, 'absent')}
-                          className={`w-9 h-9 rounded-lg inline-flex items-center justify-center transition-all disabled:opacity-50 ${
-                            isAbsent ? 'bg-red-500 text-white shadow-sm' : 'border border-red-500/30 text-red-600 hover:bg-red-500/10'
-                          }`}
-                        ><X className="h-4 w-4 stroke-[2.5]" /></button>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        {isPaid ? (
-                          <button
-                            className="flex items-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 rounded-lg px-2.5 py-1.5 hover:bg-green-100 transition-colors"
-                            onClick={() => setEditPayment({ studentId: row.student._id, studentName: row.student.name })}
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" /> مدفوع بالكامل
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <Input
-                              type="number" min="1" placeholder="المبلغ"
-                              value={payAmounts[row.student._id] || ''}
-                              onChange={e => setPayAmounts(prev => ({ ...prev, [row.student._id]: e.target.value }))}
-                              className="w-24 h-8 text-xs"
-                            />
-                            <Button
-                              size="sm" className="h-8 px-2.5 text-xs gap-1"
-                              disabled={payingId === row.student._id}
-                              onClick={() => handlePay(row)}
-                            >
-                              {payingId === row.student._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wallet className="h-3 w-3" />}
-                              دفع
-                            </Button>
-                            {row.payment.paidAmount > 0 && (
-                              <button
-                                className="text-muted-foreground hover:text-foreground"
-                                onClick={() => setEditPayment({ studentId: row.student._id, studentName: row.student.name })}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <span className={`font-bold text-sm ${row.payment.remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                          {row.payment.remainingAmount} ج.م
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {sheet.map((row, i) => (
+                  <AttendanceSheetRow
+                    key={row.student._id}
+                    row={row}
+                    index={i}
+                    busy={savingId === row.student._id}
+                    isPaying={payingId === row.student._id}
+                    payAmount={payAmounts[row.student._id] || ''}
+                    onMark={mark}
+                    onPayAmountChange={onPayAmountChange}
+                    onPay={handlePay}
+                    onEditPayment={setEditPayment}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
