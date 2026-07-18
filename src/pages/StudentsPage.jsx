@@ -470,17 +470,28 @@ export default function StudentsPage() {
       // نجيب كل الطلاب بطلب واحد لو عددهم أكبر من كده. عشان كده بنلف على
       // كل الصفحات ونجمعها، عشان صفحة الطلاب تعرض كل الطلاب فعلاً
       // (وده اللي كان بيسبب اختفاء الطالب الجديد لما يتخطى العدد الإجمالي الـ 100).
-      let allStudents = [];
-      let page = 1;
-      let totalPages = 1;
-      do {
-        const sData = await studentsAPI.getAll({ limit: 100, page });
-        allStudents = allStudents.concat(sData.data || []);
-        totalPages = sData.pagination?.pages || 1;
-        page += 1;
-      } while (page <= totalPages);
+      //
+      // الصفحة الأولى ومجموعات groupsAPI مستقلين عن بعض، فبيتجابوا بالتوازي.
+      // بعد ما نعرف عدد الصفحات الكلي من نتيجة الصفحة الأولى، باقي الصفحات
+      // (2..totalPages) مستقلة عن بعضها برضو فبتتجاب بالتوازي كمان بدل التتابع —
+      // نفس البيانات بالظبط وبنفس الترتيب، بس أسرع بكتير مع عدد طلاب كبير.
+      const [first, gData] = await Promise.all([
+        studentsAPI.getAll({ limit: 100, page: 1 }),
+        groupsAPI.getAll(),
+      ]);
 
-      const gData = await groupsAPI.getAll();
+      let allStudents = first.data || [];
+      const totalPages = first.pagination?.pages || 1;
+
+      if (totalPages > 1) {
+        const rest = await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, i) =>
+            studentsAPI.getAll({ limit: 100, page: i + 2 })
+          )
+        );
+        rest.forEach(r => { allStudents = allStudents.concat(r.data || []); });
+      }
+
       setStudents(allStudents);
       setGroups(gData.groups || []);
     } catch {

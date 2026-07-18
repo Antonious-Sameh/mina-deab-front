@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   Plus, Edit, Trash2, Users, Calendar, Clock,
@@ -466,7 +466,7 @@ function ConfirmDelete({ group, onClose, onDeleted }) {
 }
 
 // ── GroupCard ─────────────────────────────────────────────────────────────────
-function GroupCard({ group, yearMeta, onEdit, onDelete }) {
+const GroupCard = memo(function GroupCard({ group, yearMeta, onEdit, onDelete }) {
   const schedule = group.schedule || [];
 
   function formatTime(timeStr) {
@@ -592,7 +592,7 @@ function GroupCard({ group, yearMeta, onEdit, onDelete }) {
       </div>
     </div>
   );
-}
+});
 
 // ── YearSection ───────────────────────────────────────────────────────────────
 function YearSection({ yearMeta, groups, onEdit, onDelete }) {
@@ -691,6 +691,10 @@ export default function GroupsPage() {
     () => groups.reduce((s, g) => s + (g.studentCount || 0), 0),
     [groups]
   );
+
+  // Stable identity so GroupCard (memoized) doesn't re-render on every
+  // GroupsPage render just because these were recreated inline each time.
+  const handleEditGroup = useCallback((g) => setModal({ group: g }), []);
 
   return (
     <>
@@ -815,8 +819,8 @@ export default function GroupsPage() {
                 key={year.value}
                 yearMeta={year}
                 groups={byYear[year.value]}
-                onEdit={g => setModal({ group: g })}
-                onDelete={g => setDeleting(g)}
+                onEdit={handleEditGroup}
+                onDelete={setDeleting}
               />
             ))}
           </div>

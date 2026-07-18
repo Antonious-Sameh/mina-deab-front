@@ -286,7 +286,7 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
                 {/* Image item */}
                 {item.type === 'image' && (
                   <figure className="space-y-3 p-2 bg-white dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl overflow-hidden shadow-sm">
-                    <img src={item.imageUrl} alt={item.imageCaption||''} className="w-full rounded-2xl border border-slate-100 dark:border-slate-850 object-contain bg-slate-950/5 dark:bg-slate-950/40 max-h-[500px]"/>
+                    <img src={item.imageUrl} alt={item.imageCaption||''} loading="lazy" className="w-full rounded-2xl border border-slate-100 dark:border-slate-850 object-contain bg-slate-950/5 dark:bg-slate-950/40 max-h-[500px]"/>
                     {item.imageCaption && (
                       <figcaption className="text-center text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 italic">
                         {item.imageCaption}

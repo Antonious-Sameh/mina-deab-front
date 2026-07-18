@@ -15,6 +15,21 @@ export default class ErrorBoundary extends React.Component {
     console.error('[ErrorBoundary] Stack:', error?.stack);
     console.error('[ErrorBoundary] Component Stack:', errorInfo?.componentStack);
     this.setState({ errorInfo });
+
+    // Stale chunk after a new deploy: the browser tries to fetch a lazy-loaded
+    // page's JS file, but its hashed filename no longer exists on the server
+    // because a newer build replaced it. This is auto-recoverable — clear the
+    // cache and reload once, instead of showing the user a scary error screen.
+    // Guarded with sessionStorage so a genuinely broken page doesn't reload-loop.
+    const msg = String(error?.message || '');
+    const isStaleChunk = /dynamically imported module|Importing a module script failed|Failed to fetch/i.test(msg);
+    if (isStaleChunk) {
+      const lastAttempt = Number(sessionStorage.getItem('chunk_reload_attempted') || 0);
+      if (Date.now() - lastAttempt > 10000) {
+        sessionStorage.setItem('chunk_reload_attempted', String(Date.now()));
+        this.handleClearCache();
+      }
+    }
   }
 
   handleClearCache = async () => {

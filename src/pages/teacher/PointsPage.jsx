@@ -178,16 +178,21 @@ export default function PointsPage() {
       let list;
       if (group === ALL_GROUPS) {
         // كل المجموعات التابعة للمرحلة الدراسية — بنلف على كل الصفحات عشان
-        // نتجاوز حد الـ backend الأقصى للصفحة الواحدة (100)
-        list = [];
-        let page = 1;
-        let totalPages = 1;
-        do {
-          const sData = await studentsAPI.getAll({ year, limit: 100, page });
-          list = list.concat(sData.data || []);
-          totalPages = sData.pagination?.pages || 1;
-          page += 1;
-        } while (page <= totalPages);
+        // نتجاوز حد الـ backend الأقصى للصفحة الواحدة (100). الصفحة الأولى
+        // بتحدد لنا العدد الكلي، وباقي الصفحات مستقلة عن بعضها فبتتجاب
+        // بالتوازي بدل التتابع — نفس البيانات وبنفس الترتيب، بس أسرع بكتير.
+        const first = await studentsAPI.getAll({ year, limit: 100, page: 1 });
+        list = first.data || [];
+        const totalPages = first.pagination?.pages || 1;
+
+        if (totalPages > 1) {
+          const rest = await Promise.all(
+            Array.from({ length: totalPages - 1 }, (_, i) =>
+              studentsAPI.getAll({ year, limit: 100, page: i + 2 })
+            )
+          );
+          rest.forEach(r => { list = list.concat(r.data || []); });
+        }
       } else {
         // طلاب المجموعة المختارة فقط (نفس فكرة صفحة الحضور)
         const gData = await groupsAPI.getStudents(group);

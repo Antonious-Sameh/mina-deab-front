@@ -69,6 +69,7 @@ function UploadModal({ albumId, onClose, onSaved }) {
   const [files,    setFiles]    = useState([]);
   const [captions, setCaptions] = useState([]);
   const [uploading,setUploading]= useState(false);
+  const [previews, setPreviews] = useState([]);
   const fileRef = React.useRef(null);
 
   const handleFiles = (e) => {
@@ -76,6 +77,16 @@ function UploadModal({ albumId, onClose, onSaved }) {
     setFiles(selected);
     setCaptions(selected.map(() => ''));
   };
+
+  // Create object URLs once per file-selection (not on every render/keystroke),
+  // and revoke them on cleanup — previously URL.createObjectURL(f) was called
+  // inline in JSX, so every re-render (e.g. typing a caption) leaked a new
+  // blob URL for every selected file that was never released.
+  useEffect(() => {
+    const urls = files.map(f => URL.createObjectURL(f));
+    setPreviews(urls);
+    return () => { urls.forEach(u => URL.revokeObjectURL(u)); };
+  }, [files]);
 
   const handleUpload = async () => {
     if (!files.length) { toast.error('اختر صورة واحدة على الأقل'); return; }
@@ -113,7 +124,7 @@ function UploadModal({ albumId, onClose, onSaved }) {
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {files.map((f, i) => (
                 <div key={i} className="flex items-center gap-3 bg-muted/30 rounded-lg p-2">
-                  <img src={URL.createObjectURL(f)} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+                  <img src={previews[i]} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
                   <Input
                     value={captions[i] || ''}
                     onChange={e => setCaptions(p => { const n=[...p]; n[i]=e.target.value; return n; })}
@@ -182,7 +193,7 @@ function AlbumView({ album, onBack, onUpdated }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {data.photos.map(photo => (
             <div key={photo._id} className="group relative rounded-xl overflow-hidden border bg-muted aspect-square">
-              <img src={photo.url} alt={photo.caption || ''} className="w-full h-full object-cover" />
+              <img src={photo.url} alt={photo.caption || ''} loading="lazy" className="w-full h-full object-cover" />
               {photo.caption && (
                 <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-xs px-2 py-1 text-center truncate">
                   {photo.caption}
@@ -268,7 +279,7 @@ export default function HeroesPage() {
               <Card key={album._id} className="border shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer group" onClick={() => setViewing(album)}>
                 <div className="aspect-video bg-muted relative overflow-hidden">
                   {album.coverUrl ? (
-                    <img src={album.coverUrl} alt={album.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={album.coverUrl} alt={album.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
                       <FolderOpen className="h-12 w-12 text-primary/30" />

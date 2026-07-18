@@ -75,6 +75,7 @@ function NoteCard({ note, onRead }) {
             <img
               src={note.imageUrl}
               alt="صورة الملاحظة"
+              loading="lazy"
               className="w-full h-full object-cover blur-[0.5px] group-hover:blur-0 transition-all duration-300"
             />
             <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">

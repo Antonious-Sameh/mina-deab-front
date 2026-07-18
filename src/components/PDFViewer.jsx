@@ -54,6 +54,7 @@ export default function PDFViewer({ url }) {
   useEffect(() => {
     if (!url) return;
     let cancelled = false;
+    let loadedDoc = null;
 
     (async () => {
       setStatus('loading');
@@ -73,8 +74,14 @@ export default function PDFViewer({ url }) {
         });
 
         const doc = await loadingTask.promise;
-        if (cancelled) return;
+        if (cancelled) {
+          // Loaded right after the URL changed / component unmounted —
+          // nothing will ever reference it, so release it immediately.
+          try { doc.destroy(); } catch {}
+          return;
+        }
 
+        loadedDoc = doc;
         setPdf(doc);
         setTotalPages(doc.numPages);
         setStatus('ready');
@@ -86,7 +93,13 @@ export default function PDFViewer({ url }) {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      // pdf.js documents hold significant worker-side memory that isn't freed
+      // just by dropping the React reference — destroy() must be called
+      // explicitly, otherwise every PDF viewed in a session stays in memory.
+      if (loadedDoc) { try { loadedDoc.destroy(); } catch {} }
+    };
   }, [url]);
 
   // ── Render one page to <canvas> ──────────────────────────────────────────

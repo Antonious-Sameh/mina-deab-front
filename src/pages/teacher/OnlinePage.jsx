@@ -753,6 +753,7 @@ function LessonDetail({ lesson: initLesson, onBack }) {
                       <img
                         src={item.imageUrl}
                         alt={item.imageCaption || ""}
+                        loading="lazy"
                         className="max-h-40 rounded-lg object-contain border bg-muted"
                       />
                       {item.imageCaption && (
