@@ -183,10 +183,6 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
   const [completed,setCompleted]= useState(watchLog?.completed || false);
 
   useEffect(() => {
-    // Load full lesson with items
-    api.get(`/lessons/${initLesson._id}/stream`)
-       .catch(() => {})
-       .finally(() => {});
     // Get full lesson details
     api.get(`/student/lessons/${initLesson._id}`)
        .then(r => { setLesson(r.data.data.lesson || initLesson); setLoading(false); })

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   Plus, Edit, Trash2, Users, FileText, Upload, X, Save,
@@ -623,10 +623,12 @@ export default function ExamsPage() {
   const toggleSection = (key) => setOpenSections(p => ({ ...p, [key]: !p[key] }));
 
   // إلكتروني يفضل زي ما هو — مرصوص عادي. الورقي بس هو اللي بيتقسم لأقسام.
-  const electronicExams = exams.filter(e => e.examType !== 'paper');
-  const paperExams      = exams.filter(e => e.examType === 'paper');
+  // ممت memoized عشان ما يتحسبوش تاني مع كل toggle لأكورديون (openSections) —
+  // بس لما exams نفسها تتغير.
+  const electronicExams = useMemo(() => exams.filter(e => e.examType !== 'paper'), [exams]);
+  const paperExams      = useMemo(() => exams.filter(e => e.examType === 'paper'), [exams]);
 
-  const sectionGroups = (() => {
+  const sectionGroups = useMemo(() => {
     const map = {};
     const order = [];
     paperExams.forEach(e => {
@@ -636,7 +638,7 @@ export default function ExamsPage() {
     });
     // "بدون قسم" آخر حاجة لو موجودة
     return order.sort((a,b) => (a==='__none__'?1:0) - (b==='__none__'?1:0)).map(k => map[k]);
-  })();
+  }, [paperExams]);
 
   const renderExamItem = (exam) => (
     <AccordionItem key={exam._id} value={exam._id} className="bg-card border rounded-xl overflow-hidden shadow-sm">

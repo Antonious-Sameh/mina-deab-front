@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   Loader2, Save, ClipboardList, Monitor, Users, ChevronLeft, Folder
@@ -380,7 +380,8 @@ function PaperGrades() {
   const handleGroupChange = (val) => { setGroup(val); setOpenSectionKey(null); setSelectedExam(null); };
 
   // تقسيم الامتحانات لأقسام (فولدرات) حسب section المرتبط بكل امتحان
-  const folders = (() => {
+  // memoized عشان ما يتحسبش تاني مع كل فتح/قفل فولدر — بس لما allExams تتغير.
+  const folders = useMemo(() => {
     const map = {};
     const order = [];
     allExams.forEach(e => {
@@ -390,7 +391,7 @@ function PaperGrades() {
     });
     // "بدون قسم" آخر واحدة لو موجودة
     return order.sort((a,b) => (a==='__none__'?1:0) - (b==='__none__'?1:0)).map(k => map[k]);
-  })();
+  }, [allExams]);
 
   const openFolder = folders.find(f => f.key === openSectionKey) || null;
 
