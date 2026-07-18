@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { authAPI } from '@/api/services';
 import { setAccessToken, clearAccessToken } from '@/api/axios';
 import { safeLocalStorage, safeSessionStorage } from '@/lib/safe-storage';
@@ -183,8 +183,13 @@ export function AuthProvider({ children }) {
     });
   }, [persistUser]);
 
+  const contextValue = useMemo(
+    () => ({ user, login, logout, loading, isAuthenticated: !!user, mode, updateUser }),
+    [user, login, logout, loading, mode, updateUser]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isAuthenticated: !!user, mode, updateUser }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

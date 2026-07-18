@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { studentAPI } from '@/api/services';
 
@@ -26,8 +26,13 @@ export function NotificationProvider({ children }) {
     return () => clearInterval(intervalRef.current);
   }, [user, fetchCount]);
 
+  const contextValue = useMemo(
+    () => ({ unreadCount, refresh: fetchCount }),
+    [unreadCount, fetchCount]
+  );
+
   return (
-    <NotificationContext.Provider value={{ unreadCount, refresh: fetchCount }}>
+    <NotificationContext.Provider value={contextValue}>
       {children}
     </NotificationContext.Provider>
   );

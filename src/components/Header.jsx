@@ -7,6 +7,13 @@ import { useTheme } from '@/contexts/ThemeContext.jsx';
 import { useNotifications } from '@/contexts/NotificationContext.jsx';
 import api from '@/api/axios';
 
+// Cached across Header remounts (which happen on every route change, since
+// Header lives inside each route's ProtectedLayout) — the teacher's name and
+// avatar don't change during a session, so there's no need to re-fetch them
+// on every single page navigation.
+let teacherInfoCache = null;
+let teacherInfoPromise = null;
+
 const PAGE_TITLES = {
   '/teacher/home':'الرئيسية','/groups':'المجموعات','/students':'الطلاب',
   '/attendance':'الحضور والفلوس','/payments':'الفلوس','/teacher/exams':'الامتحانات',
@@ -62,10 +69,31 @@ export default function Header({ onMenuClick }) {
   
   useEffect(() => {
     if (user?.role !== 'student') return;
-    api.get('/account/teacher-info').then(r => {
-      setTeacherAvatar(r.data.data.teacher?.avatar || null);
-      setTeacherName(r.data.data.teacher?.name   || null);
-    }).catch(() => {});
+
+    if (teacherInfoCache) {
+      setTeacherAvatar(teacherInfoCache.avatar);
+      setTeacherName(teacherInfoCache.name);
+      return;
+    }
+
+    if (!teacherInfoPromise) {
+      teacherInfoPromise = api.get('/account/teacher-info')
+        .then(r => {
+          const teacher = r.data.data.teacher;
+          teacherInfoCache = { avatar: teacher?.avatar || null, name: teacher?.name || null };
+          return teacherInfoCache;
+        })
+        .catch(() => {
+          teacherInfoPromise = null; // allow retry on next mount if it failed
+          return null;
+        });
+    }
+
+    teacherInfoPromise.then(info => {
+      if (!info) return;
+      setTeacherAvatar(info.avatar);
+      setTeacherName(info.name);
+    });
   }, [user?.role]);
 
   const handleLogout = () => { logout(); navigate('/login'); };

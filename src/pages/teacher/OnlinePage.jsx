@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import {
   Plus,
@@ -1010,12 +1010,13 @@ export default function OnlinePage() {
     }
   };
 
-  // Group by year
-  const byYear = lessons.reduce((acc, l) => {
+  // Group by year — memoized so this only recomputes when `lessons` actually
+  // changes, not on every render (e.g. opening/closing a modal).
+  const byYear = useMemo(() => lessons.reduce((acc, l) => {
     if (!acc[l.academicYear]) acc[l.academicYear] = [];
     acc[l.academicYear].push(l);
     return acc;
-  }, {});
+  }, {}), [lessons]);
 
   if (viewing)
     return (

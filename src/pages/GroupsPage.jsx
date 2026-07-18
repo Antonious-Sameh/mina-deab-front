@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   Plus, Edit, Trash2, Users, Calendar, Clock,
@@ -679,14 +679,18 @@ export default function GroupsPage() {
 
   useEffect(() => { load(); }, []);
 
-  // Group by academicYear
-  const byYear = groups.reduce((acc, g) => {
+  // Group by academicYear — memoized so this only recomputes when `groups`
+  // actually changes, not on every render.
+  const byYear = useMemo(() => groups.reduce((acc, g) => {
     if (!acc[g.academicYear]) acc[g.academicYear] = [];
     acc[g.academicYear].push(g);
     return acc;
-  }, {});
+  }, {}), [groups]);
 
-  const totalStudents = groups.reduce((s, g) => s + (g.studentCount || 0), 0);
+  const totalStudents = useMemo(
+    () => groups.reduce((s, g) => s + (g.studentCount || 0), 0),
+    [groups]
+  );
 
   return (
     <>
