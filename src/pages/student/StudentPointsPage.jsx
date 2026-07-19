@@ -53,7 +53,7 @@ export default function StudentPointsPage() {
                   <>
                     <p className="text-sm font-semibold text-muted-foreground mb-1">ترتيبك</p>
                     <p className="text-5xl font-black text-primary">#{pointRank.rank}</p>
-                    <p className="text-muted-foreground text-sm mt-1">من {pointRank.outOf} طالب</p>
+                    {/*   <p className="text-muted-foreground text-sm mt-1">من {pointRank.outOf} طالب</p>  */}
                     
                     <div className="border-t mt-4 pt-4">
                       <p className="text-xs text-muted-foreground">عدد نقاطك</p>

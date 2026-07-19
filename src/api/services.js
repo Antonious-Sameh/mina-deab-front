@@ -217,6 +217,7 @@ export const heroesAPI = {
 // ══════════════════════════════════════════════════════════════════════════════
 export const studentAPI = {
   me:           ()        => api.get('/student/me').then(getData),
+  schedule:     ()        => api.get('/student/schedule').then(getData),
   attendance:   (params)  => api.get('/student/attendance', { params }).then(getData),
   payments:     ()        => api.get('/student/payments').then(getData),
   grades:       ()        => api.get('/student/grades').then(getData),

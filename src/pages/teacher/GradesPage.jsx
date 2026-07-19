@@ -369,7 +369,7 @@ function PaperGrades() {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [group,      setGroup]      = useState('');
 
-  const [allExams,    setAllExams]    = useState([]); // كل الامتحانات الورقية المنشورة/المغلقة لهذه السنة
+  const [allExams,    setAllExams]    = useState([]); // كل الامتحانات الورقية لهذه السنة (منشور/مسودة/مغلق — المغلق يفضل للعرض فقط عبر isClosed بالأسفل)
   const [loadingExams, setLoadingExams] = useState(false);
 
   const [openSectionKey, setOpenSectionKey] = useState(null); // sectionId | '__none__' | null
@@ -390,7 +390,7 @@ function PaperGrades() {
     if (!year) { setAllExams([]); return; }
     setLoadingExams(true);
     api.get('/exams', { params: { year } })
-      .then(r => setAllExams((r.data.data.exams || []).filter(e => e.examType === 'paper' && e.status !== 'draft')))
+      .then(r => setAllExams((r.data.data.exams || []).filter(e => e.examType === 'paper')))
       .catch(() => toast.error('فشل تحميل الامتحانات الورقية'))
       .finally(() => setLoadingExams(false));
   }, [year]);

@@ -1,36 +1,43 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Helmet } from "react-helmet";
-import { Calendar, Clock, Users, CalendarDays, Inbox } from "lucide-react";
+import { Clock, Users, CalendarDays, Inbox, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { useAuth } from "@/contexts/AuthContext";
+import { studentAPI } from "@/api/services";
 
-const SCHEDULE_DEMO = {
-  "first-prep": [
-    { day: "السبت", time: "4:00م - 6:00م", group: "مجموعة النخبة" },
-    { day: "الثلاثاء", time: "4:00م - 6:00م", group: "مجموعة النخبة" },
-  ],
-  "second-prep": [
-    { day: "الأحد", time: "5:00م - 7:00م", group: "مجموعة الرواد" },
-    { day: "الأربعاء", time: "5:00م - 7:00م", group: "مجموعة الرواد" },
-  ],
-  "third-prep": [
-    { day: "الاثنين", time: "4:00م - 7:00م", group: "مجموعة الأبطال" },
-    { day: "الخميس", time: "4:00م - 7:00م", group: "مجموعة الأبطال" },
-  ],
-  "first-sec": [
-    { day: "الثلاثاء", time: "6:00م - 8:00م", group: "مجموعة الصباح" },
-  ],
-  "second-sec": [
-    { day: "الجمعة", time: "10:00ص - 1:00م", group: "مجموعة الإتقان" },
-  ],
-  "third-sec": [
-    { day: "السبت", time: "10:00ص - 1:00م", group: "مجموعة التفوق" },
-  ],
-};
+// "16:00" (24h, as stored on the group) → "4:00 م" (12h, Arabic AM/PM) —
+// same formatting convention already used for schedules in GroupCard (teacher side).
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  try {
+    const [h, m] = timeStr.split(':');
+    const hour = Number(h);
+    const suffix = hour >= 12 ? 'م' : 'ص';
+    const h12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    return `${h12}:${m} ${suffix}`;
+  } catch { return timeStr; }
+}
 
 export default function StudentSchedulePage() {
-  const { user } = useAuth();
-  const schedule = SCHEDULE_DEMO[user?.academicYear] || [];
+  const [loading,  setLoading]  = useState(true);
+  const [groupName, setGroupName] = useState('');
+  const [schedule, setSchedule] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await studentAPI.schedule();
+        if (cancelled) return;
+        setGroupName(data.group?.name || '');
+        setSchedule(data.schedule || []);
+      } catch {
+        if (!cancelled) { setGroupName(''); setSchedule([]); }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <>
@@ -66,7 +73,11 @@ export default function StudentSchedulePage() {
         </div>
 
         {/* Schedule Content */}
-        {schedule.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : schedule.length === 0 ? (
           /* State: Empty View - Minimalist & Warm */
           <div className="flex flex-col items-center justify-center text-center py-20 bg-muted/30 border-2 border-dashed border-muted rounded-3xl p-6">
             <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center shadow-sm mb-4 border">
@@ -99,7 +110,7 @@ export default function StudentSchedulePage() {
                     </span>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium bg-muted/60 px-3 py-1 rounded-lg">
                       <Users className="h-3.5 w-3.5 text-primary/70" />
-                      <span>{s.group}</span>
+                      <span>{groupName}</span>
                     </div>
                   </div>
 
@@ -120,7 +131,7 @@ export default function StudentSchedulePage() {
                           unicodeBidi: "plaintext",
                         }}
                       >
-                        {s.time}
+                        {formatTime(s.time)}
                       </span>
                     </div>
                   </div>

@@ -115,7 +115,7 @@ function DirectVideoPlayer({ videoUrl, lessonId, onProgress }) {
     return () => { clearInterval(interval.current); v.removeEventListener('play',onPlay); v.removeEventListener('pause',onPause); v.removeEventListener('ended',onEnded); };
   }, [lessonId, send]);
 
-  return <video ref={videoRef} src={videoUrl} controls controlsList="nodownload" className="w-full rounded-2xl bg-black shadow-lg border border-slate-200/80 dark:border-slate-800/80" style={{maxHeight:'460px'}}/>;
+  return <video ref={videoRef} src={videoUrl} controls preload="metadata" controlsList="nodownload" className="w-full rounded-2xl bg-black shadow-lg border border-slate-200/80 dark:border-slate-800/80" style={{maxHeight:'460px'}}/>;
 }
 
 // ── PDF Viewer — opens inline inside platform ─────────────────────────────────
