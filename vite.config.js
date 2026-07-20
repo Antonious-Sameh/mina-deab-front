@@ -52,6 +52,17 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
+          // Apple splash screens (apple-touch-startup-image) — only fetched
+          // by iOS/iPadOS at launch, load on demand, not in precache
+          {
+            urlPattern: /\/splash\/.+\.png$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "apple-splash-cache",
+              expiration: { maxEntries: 15, maxAgeSeconds: 90 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           // Google Docs Viewer (PDF عرض)
           {
             urlPattern: /^https:\/\/docs\.google\.com\//,
@@ -98,7 +109,6 @@ export default defineConfig({
         lang: "ar",
         dir: "rtl",
         icons: [
-          { src: "/icons/icon-72x72.png",            sizes: "72x72",   type: "image/png", purpose: "any" },
           { src: "/icons/icon-96x96.png",            sizes: "96x96",   type: "image/png", purpose: "any" },
           { src: "/icons/icon-128x128.png",          sizes: "128x128", type: "image/png", purpose: "any" },
           { src: "/icons/icon-144x144.png",          sizes: "144x144", type: "image/png", purpose: "any" },

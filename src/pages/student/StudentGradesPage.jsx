@@ -12,6 +12,7 @@ import {
   Calendar,
   TrendingUp,
   BookOpen,
+  Folder,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -226,6 +227,14 @@ export default function StudentGradesPage() {
                                       month: "short",
                                       day: "numeric"
                                     })}
+                                  </span>
+                                )}
+
+                                {/* Section / Category (paper exams only, when assigned) */}
+                                {g.section && (
+                                  <span className="inline-flex items-center gap-1 text-xs text-slate-400 font-medium bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                                    <Folder className="h-3 w-3 text-slate-400" />
+                                    {g.section}
                                   </span>
                                 )}
                               </div>
