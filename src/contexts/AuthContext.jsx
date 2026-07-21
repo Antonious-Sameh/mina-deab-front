@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { authAPI } from '@/api/services';
-import { setAccessToken, clearAccessToken } from '@/api/axios';
+import { setAccessToken, clearAccessToken, refreshAccessToken } from '@/api/axios';
 import { safeLocalStorage, safeSessionStorage } from '@/lib/safe-storage';
 
 const AuthContext = createContext(null);
@@ -50,8 +50,7 @@ export function AuthProvider({ children }) {
     if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
     refreshTimerRef.current = setInterval(async () => {
       try {
-        const data = await authAPI.refresh();
-        if (data?.accessToken) setAccessToken(data.accessToken);
+        await refreshAccessToken();
       } catch (err) {
         // Only clear session on explicit 401/403 from server — not on network errors
         if (err.response?.status === 401 || err.response?.status === 403) {
@@ -65,6 +64,26 @@ export function AuthProvider({ children }) {
     }, 12 * 60 * 1000);
   }, [persistUser]);
 
+  // ── Refresh immediately when the tab becomes visible again ────────────────
+  // Mobile browsers (iOS Safari especially) heavily throttle or fully pause
+  // setInterval/setTimeout timers while a tab is backgrounded — the 12-minute
+  // interval above can simply never fire while the user has the app
+  // backgrounded (switched apps, locked the phone, etc.), so the access token
+  // can silently expire during that time. Refreshing the moment the tab comes
+  // back to the foreground closes that gap, instead of waiting for the next
+  // user action to hit a stale token and rely solely on the reactive 401 path.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      refreshAccessToken().catch(() => {
+        // Reactive 401 handling / next restore() will deal with genuine expiry;
+        // a failed opportunistic refresh here shouldn't itself log anyone out.
+      });
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
   // ── Restore session on app load (handles page refresh) ───────────────────
   useEffect(() => {
     const restore = async () => {
@@ -74,10 +93,8 @@ export function AuthProvider({ children }) {
 
       try {
         // Try to get a new access token using the httpOnly refresh cookie
-        const data = await authAPI.refresh();
-        if (!data?.accessToken) throw new Error('no_token');
-
-        setAccessToken(data.accessToken);
+        const t = await refreshAccessToken();
+        if (!t) throw new Error('no_token');
 
         // Fetch fresh user data in background (non-blocking for UX)
         try {

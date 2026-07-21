@@ -30,15 +30,51 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ── Response interceptor: 401 → refresh → retry ───────────────────────────────
-let isRefreshing = false;
-let queue        = [];
+// ── Shared refresh (single-flight) ──────────────────────────────────────────
+// Both the reactive 401-triggered refresh (below) and the proactive refresh
+// (AuthContext's timer/visibility-change triggers) call THIS SAME function,
+// so only one /auth/refresh network call is ever in flight per tab at a time
+// — whichever triggered it, everyone else just waits on the same promise
+// instead of firing a second, redundant, racing refresh request.
+let isRefreshing   = false;
+let queue          = [];
+let refreshPromise = null;
 
 const processQueue = (err, token = null) => {
   queue.forEach(p => err ? p.reject(err) : p.resolve(token));
   queue = [];
 };
 
+export const refreshAccessToken = () => {
+  if (isRefreshing) {
+    return new Promise((resolve, reject) => queue.push({ resolve, reject }));
+  }
+  isRefreshing = true;
+  refreshPromise = axios.post(
+    `${BASE_URL}/auth/refresh`,
+    {},
+    { withCredentials: true, timeout: 8000 }
+  )
+    .then(({ data }) => {
+      const t = data.data?.accessToken;
+      if (!t) throw new Error('No token in refresh response');
+      setAccessToken(t);
+      processQueue(null, t);
+      return t;
+    })
+    .catch((err) => {
+      clearAccessToken();
+      processQueue(err);
+      throw err;
+    })
+    .finally(() => {
+      isRefreshing = false;
+      refreshPromise = null;
+    });
+  return refreshPromise;
+};
+
+// ── Response interceptor: 401 → refresh → retry ───────────────────────────────
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
@@ -61,44 +97,19 @@ api.interceptors.response.use(
       return Promise.reject(err);
     }
 
-    // ── Queue concurrent requests during refresh ──────────────────────────────
-    if (isRefreshing) {
-      return new Promise((res, rej) => queue.push({ resolve: res, reject: rej }))
-        .then(token => {
-          orig.headers.Authorization = `Bearer ${token}`;
-          return api(orig);
-        });
-    }
-
-    orig._retry  = true;
-    isRefreshing = true;
+    orig._retry = true;
 
     try {
-      const { data } = await axios.post(
-        `${BASE_URL}/auth/refresh`,
-        {},
-        { withCredentials: true, timeout: 8000 }
-      );
-
-      const t = data.data?.accessToken;
-      if (!t) throw new Error('No token in refresh response');
-
-      setAccessToken(t);
-      processQueue(null, t);
+      const t = await refreshAccessToken();
       orig.headers.Authorization = `Bearer ${t}`;
       return api(orig);
     } catch (refreshErr) {
-      clearAccessToken();
-      processQueue(refreshErr);
-      
       // Only fire auth:expired if the refresh actually failed with a real response
       // (not a network error — network errors shouldn't log the user out)
       if (refreshErr.response) {
         window.dispatchEvent(new CustomEvent('auth:expired'));
       }
       return Promise.reject(refreshErr);
-    } finally {
-      isRefreshing = false;
     }
   });
 
