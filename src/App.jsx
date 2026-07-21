@@ -98,7 +98,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
 
             {/* TEACHER ROUTES */}
-            <Route path="/teacher/home" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><HomePage /></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/teacher/home" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><HomePage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
             <Route path="/groups" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><GroupsPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
             <Route path="/students" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><StudentsPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
             <Route path="/attendance" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><AttendancePage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
