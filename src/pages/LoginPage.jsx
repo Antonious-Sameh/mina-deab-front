@@ -457,17 +457,17 @@ export default function LoginPage() {
 
                 {/* Developer Credit Badge */}
                 <div className="flex items-center gap-2 bg-slate-50 hover:bg-indigo-50/60 border border-slate-200/80 hover:border-indigo-200 px-3 py-1.5 rounded-xl transition-all duration-300 group">
-                  <span className="text-[10px] font-mono text-slate-400 group-hover:text-indigo-500 transition-colors">
-                    DEV:
-                  </span>
                   <a
                     href="https://antonious.vercel.app"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition-colors flex items-center gap-1.5"
-                    title="زيارة البورتفوليو"
+                    title="زيارة معرض الأعمال"
                   >
-                    <span>م/ أنطونيوس سامح</span>
+                    <span className="text-[11px] text-slate-500 font-normal">
+                      تطوير:
+                    </span>
+                    <span>المهندس أنطونيوس سامح</span>
                     <span className="text-[10px] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 rtl:rotate-180">
                       ↗
                     </span>
