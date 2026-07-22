@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   StickyNote,
   MonitorPlay,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext.jsx";
@@ -66,6 +67,7 @@ const STUDENT_NAV = [
   { path: "/student/attendance", label: "حضوري", icon: ClipboardCheck },
   { path: "/student/notes", label: "الملاحظات", icon: StickyNote, badge: true },
   { path: "/student/heroes", label: "أبطال مروا من هنا", icon: Medal },
+  { path: "/student/contact", label: "تواصل مع المدرس", icon: MessageCircle },
   { path: "/student/account", label: "الحساب", icon: UserCircle },
 ];
 

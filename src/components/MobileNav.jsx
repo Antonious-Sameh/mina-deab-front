@@ -25,6 +25,7 @@ import {
   ClipboardCheck,
   StickyNote,
   MonitorPlay,
+  MessageCircle,
 } from "lucide-react";
 
 const TEACHER_GROUPS = [
@@ -72,6 +73,7 @@ const STUDENT_NAV = [
   { path: "/student/online", label: "أون لاين", icon: MonitorPlay },
   { path: "/student/notes", label: "الملاحظات", icon: StickyNote },
   { path: "/student/heroes", label: "أبطال مروا من هنا", icon: Medal },
+  { path: "/student/contact", label: "تواصل مع المدرس", icon: MessageCircle },
   { path: "/student/account", label: "الحساب", icon: UserCircle },
 ];
 

@@ -48,6 +48,8 @@ const StudentHeroesPage     = lazy(() => import('@/pages/student/StudentHeroesPa
 const StudentAccountPage    = lazy(() => import('@/pages/student/StudentAccountPage.jsx'));
 const StudentNotesPage      = lazy(() => import('@/pages/student/StudentNotesPage.jsx'));
 const StudentOnlinePage     = lazy(() => import('@/pages/student/StudentOnlinePage.jsx'));
+const StudentContactPage = lazy(() => import('@/pages/student/StudentContactPage.jsx'));
+
 
 // Lightweight fallback shown only while a route's chunk is downloading —
 // uses the same Loader2/animate-spin pattern already used across the app
@@ -128,6 +130,7 @@ function App() {
             <Route path="/student/account" element={<ProtectedRoute allowedRole="student"><ProtectedLayout><StudentAccountPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/student/notes" element={<ProtectedRoute allowedRole="student"><ProtectedLayout><StudentNotesPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/student/online" element={<ProtectedRoute allowedRole="student"><ProtectedLayout><StudentOnlinePage /></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/student/contact" element={<ProtectedRoute allowedRole="student"><ProtectedLayout><StudentContactPage /></ProtectedLayout></ProtectedRoute>}/>
 
             {/* FALLBACK */}
             <Route path="*" element={<Navigate to="/" replace />} />
