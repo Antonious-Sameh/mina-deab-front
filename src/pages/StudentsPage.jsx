@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import {
   Plus, Edit, KeyRound, Users, Ban, CheckCircle2, Trash2,
   MoreVertical, GraduationCap, Loader2, AlertCircle, X, Save,
-  Search, Copy, Check, ShieldCheck
+  Search, Copy, Check, ShieldCheck, Smartphone
 } from 'lucide-react';
 import { Button }   from '@/components/ui/button';
 import { Input }    from '@/components/ui/input';
@@ -286,6 +286,41 @@ function ResetCodeModal({ student, onClose }) {
   );
 }
 
+// ── Reset Device (single-device lock) ──────────────────────────────────────────
+function ResetDeviceModal({ student, onClose }) {
+  const [loading, setLoading] = useState(false);
+  const handle = async () => {
+    setLoading(true);
+    try {
+      await studentsAPI.resetDevice(student._id);
+      toast.success('تم إعادة تعيين الجهاز — أول تسجيل دخول جديد هيربط الحساب بالجهاز ده');
+      onClose();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل إعادة تعيين الجهاز');
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={!loading ? onClose : undefined}>
+      <div className="bg-card border rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
+        <h3 className="font-bold text-lg flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" /> إعادة تعيين الجهاز</h3>
+        <p className="text-muted-foreground text-sm">
+          سيتم فك ارتباط حساب <strong>{student.name}</strong> بالجهاز الحالي.
+          أول تسجيل دخول بعد كده هيربط الحساب تلقائيًا بأي جهاز يُستخدم فيه.
+        </p>
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>إلغاء</Button>
+          <Button className="flex-1 gap-2" onClick={handle} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
+            إعادة التعيين
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Confirm Delete ────────────────────────────────────────────────────────────
 function ConfirmDelete({ student, onClose, onDeleted }) {
   const [loading, setLoading] = useState(false);
@@ -328,7 +363,7 @@ function ConfirmDelete({ student, onClose, onDeleted }) {
 const StudentRow = memo(function StudentRow({
   student, isEditing, idDraft, savingId,
   onStartEditId, onCancelEditId, onChangeIdDraft, onSaveEditId,
-  onEdit, onResetCode, onToggle, onDelete,
+  onEdit, onResetCode, onResetDevice, onToggle, onDelete,
 }) {
   return (
     <tr className="hover:bg-background transition-colors">
@@ -400,6 +435,9 @@ const StudentRow = memo(function StudentRow({
             <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => onResetCode(student)}>
               <KeyRound className="h-4 w-4" /> تغيير الكود
             </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => onResetDevice(student)}>
+              <Smartphone className="h-4 w-4" /> إعادة تعيين الجهاز
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className={`gap-2 cursor-pointer ${student.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}`}
@@ -425,6 +463,7 @@ export default function StudentsPage() {
   const [search,    setSearch]    = useState('');
   const [modal,     setModal]     = useState(null); // null | 'add' | { student }
   const [resetting, setResetting] = useState(null);
+  const [resettingDevice, setResettingDevice] = useState(null);
   const [deleting,  setDeleting]  = useState(null);
   const [newCodeInfo, setNewCodeInfo] = useState(null); // { code, name }
   const [editingIdFor, setEditingIdFor] = useState(null); // studentId (Mongo _id) being edited
@@ -645,6 +684,7 @@ export default function StudentsPage() {
                                     onSaveEditId={saveEditId}
                                     onEdit={handleEditStudent}
                                     onResetCode={setResetting}
+                                    onResetDevice={setResettingDevice}
                                     onToggle={handleToggle}
                                     onDelete={setDeleting}
                                   />
@@ -680,6 +720,7 @@ export default function StudentsPage() {
         />
       )}
       {resetting && <ResetCodeModal student={resetting} onClose={() => { setResetting(null); load(); }} />}
+      {resettingDevice && <ResetDeviceModal student={resettingDevice} onClose={() => { setResettingDevice(null); load(); }} />}
       {deleting  && <ConfirmDelete  student={deleting}  onClose={() => setDeleting(null)} onDeleted={() => { setDeleting(null); load(); }} />}
       {newCodeInfo && (
         <NewStudentCodeModal

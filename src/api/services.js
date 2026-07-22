@@ -4,6 +4,7 @@
 // Error handling is done by the axios interceptor + individual catch blocks.
 
 import api from './axios';
+import { getDeviceId } from '@/lib/deviceId';
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 const getData = (res) => res.data.data;
@@ -12,7 +13,7 @@ const getData = (res) => res.data.data;
 // AUTH
 // ══════════════════════════════════════════════════════════════════════════════
 export const authAPI = {
-  login:   (code)  => api.post('/auth/login', { code }).then(getData),
+  login:   (code)  => api.post('/auth/login', { code, deviceId: getDeviceId() }).then(getData),
   refresh: ()      => api.post('/auth/refresh').then(getData),
   logout:  ()      => api.post('/auth/logout'),
   me:      ()      => api.get('/auth/me').then(getData),
@@ -31,6 +32,7 @@ export const studentsAPI = {
   remove:       (id)          => api.delete(`/students/${id}`).then(getData),
   toggleStatus: (id)          => api.patch(`/students/${id}/toggle-status`).then(getData),
   resetCode:    (id)          => api.post(`/students/${id}/reset-code`).then(getData),
+  resetDevice:  (id)          => api.post(`/students/${id}/reset-device`).then(getData),
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
