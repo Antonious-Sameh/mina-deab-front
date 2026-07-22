@@ -197,11 +197,13 @@ export default function StudentHomePage() {
                       <p className="text-3xl font-black text-amber-500 dark:text-amber-400 tracking-tight">
                         {stats.rank ? `${stats.rank}` : "—"}
                       </p>
+                      {/*
                       {stats.rank && stats.rankOutOf ? (
-                        {/*<p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
                           من {stats.rankOutOf} طالب
-                        </p>*/}
+                        </p>
                       ) : null}
+                        */}
                       <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
                         ترتيب النقاط
                       </p>
