@@ -435,25 +435,45 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Blueprint Sheet Footer Title Block */}
-        <footer className="w-full py-8 text-center border-t border-[#cbd5e1]/45 bg-[#f6f5f0]/30 relative z-10 font-sans">
-          <div className="max-w-md mx-auto flex flex-col items-center justify-center gap-1.5 px-6">
-            <p className="text-xs text-slate-455 font-medium">
-              &copy; 2026 الإبداع في الرياضيات. جميع الحقوق محفوظة.
-            </p>
+        {/* Blueprint Sheet Title Block Footer */}
+        <footer className="w-full py-6 bg-[#f8f7f2]/80 backdrop-blur-md border-t-2 border-[#cbd5e1]/60 relative z-10 font-sans">
+          <div className="max-w-xl mx-auto px-4">
+            {/* Title Block Container */}
+            <div className="border-2 border-[#cbd5e1] rounded-2xl bg-white/80 p-3 shadow-sm relative overflow-hidden">
+              {/* Decorative Blueprint Corner Mark */}
+              <div className="absolute top-1.5 right-1.5 w-2 h-2 border-t-2 border-r-2 border-indigo-400 opacity-60" />
+              <div className="absolute bottom-1.5 left-1.5 w-2 h-2 border-b-2 border-l-2 border-indigo-400 opacity-60" />
 
-            <div className="flex items-center gap-2 text-[9px] text-slate-455 font-mono">
-              <span>تطوير:</span>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-600">
+                {/* Project & Copyright Section */}
+                <div className="flex items-center gap-2.5 text-xs font-semibold text-slate-700">
+                  <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>الإبداع في الرياضيات</span>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-[11px] text-slate-500 font-normal">
+                    &copy; 2026 جميع الحقوق محفوظة
+                  </span>
+                </div>
 
-              <a
-                href="https://antonious.vercel.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold transition-colors duration-200 hover:text-blue-600 hover:underline"
-                title="زيارة البورتفوليو"
-              >
-                المهندس أنطونيوس سامح
-              </a>
+                {/* Developer Credit Badge */}
+                <div className="flex items-center gap-2 bg-slate-50 hover:bg-indigo-50/60 border border-slate-200/80 hover:border-indigo-200 px-3 py-1.5 rounded-xl transition-all duration-300 group">
+                  <span className="text-[10px] font-mono text-slate-400 group-hover:text-indigo-500 transition-colors">
+                    DEV:
+                  </span>
+                  <a
+                    href="https://antonious.vercel.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition-colors flex items-center gap-1.5"
+                    title="زيارة البورتفوليو"
+                  >
+                    <span>م/ أنطونيوس سامح</span>
+                    <span className="text-[10px] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 rtl:rotate-180">
+                      ↗
+                    </span>
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </footer>
