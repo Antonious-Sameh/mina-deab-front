@@ -587,12 +587,6 @@ const AttendanceSheetRow = memo(function AttendanceSheetRow({
           </button>
         ) : (
           <div className="flex items-center gap-1.5">
-            <Input
-              type="number" min="1" placeholder="المبلغ"
-              value={payAmount}
-              onChange={e => onPayAmountChange(row.student._id, e.target.value)}
-              className="w-24 h-8 text-xs"
-            />
             <Button
               size="sm" className="h-8 px-2.5 text-xs gap-1"
               disabled={isPaying}
@@ -601,6 +595,13 @@ const AttendanceSheetRow = memo(function AttendanceSheetRow({
               {isPaying ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wallet className="h-3 w-3" />}
               دفع
             </Button>
+            <Input
+              type="number" min="0" placeholder="الباقي (اختياري)"
+              value={payAmount}
+              onChange={e => onPayAmountChange(row.student._id, e.target.value)}
+              className="w-28 h-8 text-xs"
+              title="سيب الخانة فاضية لو الطالب دفع كل المتبقي عليه، أو اكتب المبلغ اللي هيفضل عليه بعد الدفع"
+            />
             {row.payment.paidAmount > 0 && (
               <button
                 className="text-muted-foreground hover:text-foreground"
@@ -651,9 +652,29 @@ function SessionSheetView({ session, month, group, onBack }) {
     } finally { setSavingId(null); }
   }, [session._id, load]);
 
-  const handlePay = useCallback(async (row, amountStr) => {
-    const amount = Number(amountStr);
-    if (!amountStr || amount <= 0) { toast.error('أدخل مبلغاً صحيحاً'); return; }
+  const handlePay = useCallback(async (row, remainingStr) => {
+    const currentRemaining = row.payment.remainingAmount;
+
+    // خانة "الباقي" اختيارية — فاضية أو صفر يعني الطالب دفع كل المتبقي عليه
+    const desiredRemaining = (remainingStr === '' || remainingStr === undefined || remainingStr === null)
+      ? 0
+      : Number(remainingStr);
+
+    if (isNaN(desiredRemaining) || desiredRemaining < 0) {
+      toast.error('أدخل رقماً صحيحاً في خانة الباقي'); return;
+    }
+    if (desiredRemaining > currentRemaining) {
+      toast.error(`الباقي المدخل أكبر من الباقي الحالي (${currentRemaining} ج.م)`); return;
+    }
+
+    // المبلغ الفعلي اللي هيتحصل دلوقتي = الباقي الحالي ناقص الباقي الجديد المطلوب.
+    // نفس الـ API (addInstallment) بيستقبل مبلغ يُضاف للمدفوع، تمامًا زي الأول —
+    // الفرق إن المدرس بقى بيحدد "الباقي" بدل "المدفوع".
+    const amount = currentRemaining - desiredRemaining;
+    if (amount <= 0) {
+      toast.error('لا يوجد مبلغ جديد للدفع'); return;
+    }
+
     setPayingId(row.student._id);
     try {
       let paymentId = row.payment.paymentId;
