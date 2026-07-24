@@ -194,6 +194,9 @@ export const accountAPI = {
   removeAvatar:()         => api.delete('/account/avatar').then(getData),
   changeCode:  (data)     => api.patch('/account/change-code', data).then(getData),
   updateInfo:  (data)     => api.patch('/account/update-info', data).then(getData),
+  getAdminPassword:    ()         => api.get('/account/admin-password').then(getData),
+  updateAdminPassword: (password) => api.patch('/account/admin-password', { password }).then(getData),
+  verifyAdminPassword: (password) => api.post('/account/verify-admin-password', { password }).then(getData),
 };
 
 

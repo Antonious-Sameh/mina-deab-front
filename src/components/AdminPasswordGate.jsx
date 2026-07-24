@@ -6,32 +6,43 @@
 // freely inside that page — but leaving it and opening it (or any other
 // protected page) again asks again.
 //
-// Purely client-side, no backend/database involved. Change the password in
-// src/config/adminPassword.js.
+// The password itself is stored in the database (plain text, by design) and
+// managed by the teacher from the Account page — see accountAPI.verifyAdminPassword.
 //
 // Usage:
 //   <AdminPasswordGate><GroupsPage /></AdminPasswordGate>
 
 import React, { useState } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ADMIN_PAGES_PASSWORD } from '@/config/adminPassword';
+import { accountAPI } from '@/api/services';
 
 export default function AdminPasswordGate({ children }) {
   const [unlocked, setUnlocked] = useState(false);
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
+  const [checking, setChecking] = useState(false);
 
   if (unlocked) return children;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (input === ADMIN_PAGES_PASSWORD) {
-      setUnlocked(true);
-    } else {
-      setError('كلمة المرور غير صحيحة');
+    if (checking) return;
+    setChecking(true);
+    try {
+      const { valid } = await accountAPI.verifyAdminPassword(input);
+      if (valid) {
+        setUnlocked(true);
+      } else {
+        setError('كلمة المرور غير صحيحة');
+        setInput('');
+      }
+    } catch {
+      setError('تعذر التحقق من كلمة المرور، حاول مرة أخرى');
       setInput('');
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -53,10 +64,14 @@ export default function AdminPasswordGate({ children }) {
             autoFocus
             onChange={(e) => { setInput(e.target.value); setError(''); }}
             placeholder="كلمة المرور"
+            disabled={checking}
             className={`h-11 text-center ${error ? 'border-destructive focus-visible:ring-destructive' : ''}`}
           />
           {error && <p className="text-xs text-destructive text-center font-medium">{error}</p>}
-          <Button type="submit" className="w-full h-11">دخول</Button>
+          <Button type="submit" className="w-full h-11 gap-2" disabled={checking}>
+            {checking && <Loader2 className="h-4 w-4 animate-spin" />}
+            دخول
+          </Button>
         </form>
       </div>
     </div>

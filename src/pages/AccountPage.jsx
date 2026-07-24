@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   User, Camera, Trash2, KeyRound, Save, Loader2,
-  AlertCircle, Eye, EyeOff, CheckCircle2, Phone, Edit
+  AlertCircle, Eye, EyeOff, CheckCircle2, Phone, Edit, Lock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -82,6 +82,12 @@ export default function AccountPage() {
   const [showNew,     setShowNew]     = useState(false);
   const [savingCode,  setSavingCode]  = useState(false);
 
+  // Admin pages password
+  const [adminPassword,     setAdminPassword]     = useState('');
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [savingAdminPassword, setSavingAdminPassword] = useState(false);
+  const [loadingAdminPassword, setLoadingAdminPassword] = useState(true);
+
   const load = async () => {
     try {
       const d = await accountAPI.getMe();
@@ -94,6 +100,13 @@ export default function AccountPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    accountAPI.getAdminPassword()
+      .then(d => setAdminPassword(d.password || ''))
+      .catch(() => {})
+      .finally(() => setLoadingAdminPassword(false));
+  }, []);
 
   const handleUpload = async (file) => {
     setUploading(true);
@@ -142,6 +155,17 @@ export default function AccountPage() {
       setCurrentCode(''); setNewCode('');
     } catch (err) { toast.error(err?.response?.data?.message || 'فشل تغيير الكود'); }
     finally { setSavingCode(false); }
+  };
+
+  const handleSaveAdminPassword = async () => {
+    if (!adminPassword.trim()) { toast.error('أدخل كلمة المرور'); return; }
+    setSavingAdminPassword(true);
+    try {
+      await accountAPI.updateAdminPassword(adminPassword.trim());
+      setAdminPassword(adminPassword.trim());
+      toast.success('تم حفظ كلمة مرور الصفحات الخاصة بنجاح');
+    } catch (err) { toast.error(err?.response?.data?.message || 'فشل حفظ كلمة المرور'); }
+    finally { setSavingAdminPassword(false); }
   };
 
   if (loading) return (
@@ -274,7 +298,52 @@ export default function AccountPage() {
           </CardContent>
         </Card>
 
-        {/* Account Info */}
+        {/* Admin Pages Password Card */}
+        <Card className="border shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <Lock className="h-5 w-5 text-primary" /> كلمة مرور الصفحات الخاصة
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              كلمة المرور دي منفصلة تمامًا عن كود الدخول — بتُستخدم بس لفتح بعض الصفحات
+              الحساسة في لوحة التحكم. تقدر تشوفها أو تغيّرها في أي وقت.
+            </p>
+            {loadingAdminPassword ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>كلمة المرور</Label>
+                  <div className="relative">
+                    <Input
+                      type={showAdminPassword ? 'text' : 'password'}
+                      value={adminPassword}
+                      onChange={e => setAdminPassword(e.target.value)}
+                      placeholder="اكتب كلمة مرور الصفحات الخاصة"
+                      dir="ltr"
+                      className="pl-10 font-mono"
+                    />
+                    <button type="button" onClick={() => setShowAdminPassword(p => !p)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <Button
+                  className="w-full gap-2"
+                  onClick={handleSaveAdminPassword}
+                  disabled={savingAdminPassword || !adminPassword.trim()}
+                >
+                  {savingAdminPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {savingAdminPassword ? 'جاري الحفظ...' : 'حفظ كلمة المرور'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
         <Card className="border shadow-sm bg-muted/20">
           <CardContent className="p-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
