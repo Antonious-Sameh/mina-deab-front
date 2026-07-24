@@ -12,17 +12,30 @@
 // Usage:
 //   <AdminPasswordGate><GroupsPage /></AdminPasswordGate>
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { accountAPI } from '@/api/services';
 
 export default function AdminPasswordGate({ children }) {
+  const location = useLocation();
   const [unlocked, setUnlocked] = useState(false);
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
+
+  // إعادة القفل بشكل صريح مع أي تغيير في مسار الصفحة — حتى لو React قرر
+  // يعيد استخدام نفس نسخة الكومبوننت بدل ما يعمل mount جديد (زي ما بيحصل
+  // لما صفحتين محميتين مختلفتين بيبقوا بنفس شكل الشجرة)، الـ effect ده
+  // بيتنفذ في كل الأحوال مع أي تغيير في location.pathname ويرجع unlocked
+  // لـ false، فكل صفحة محمية لازم تتفتح بكلمة السر بشكل مستقل من غير أي استثناء.
+  useEffect(() => {
+    setUnlocked(false);
+    setInput('');
+    setError('');
+  }, [location.pathname]);
 
   if (unlocked) return children;
 
