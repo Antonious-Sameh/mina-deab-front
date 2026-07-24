@@ -114,7 +114,7 @@ function App() {
             <Route path="/teacher/heroes" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><HeroesPage /></ProtectedLayout></ProtectedRoute>} />
             <Route path="/teacher/notes" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><NotesPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
             <Route path="/teacher/online" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><OnlinePage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
-            <Route path="/teacher/account" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AccountPage /></ProtectedLayout></ProtectedRoute>} />
+            <Route path="/teacher/account" element={<ProtectedRoute allowedRole="teacher"><ProtectedLayout><AdminPasswordGate><AccountPage /></AdminPasswordGate></ProtectedLayout></ProtectedRoute>} />
 
             {/* STUDENT ROUTES */}
             <Route path="/student/home" element={<ProtectedRoute allowedRole="student"><ProtectedLayout><StudentHomePage /></ProtectedLayout></ProtectedRoute>} />
