@@ -152,20 +152,25 @@ export function AuthProvider({ children }) {
   // ── Login ─────────────────────────────────────────────────────────────────
   const login = useCallback(async (code) => {
     const trimmed = code.trim().toUpperCase();
-    if (mode !== 'demo') {
-      try {
-        const data = await authAPI.login(trimmed);
-        setAccessToken(data.accessToken);
-        setUser(data.user);
-        persistUser(data.user);
-        setMode('backend');
-        scheduleRefresh();
-        return data.user;
-      } catch (err) {
-        if (!isNetworkError(err)) throw err;
-        // Backend unreachable → fall through to demo mode
-        setMode('demo');
-      }
+    // Always attempt the real backend on an explicit login click, even if
+    // `mode` was previously latched to 'demo' by an unrelated background
+    // request (e.g. the silent /auth/refresh call on page load timing out
+    // once on a slow network). `mode` reflects the state as of a past
+    // request, not necessarily now — a stale 'demo' value must never by
+    // itself prevent a genuine login attempt from reaching the backend.
+    try {
+      const data = await authAPI.login(trimmed);
+      setAccessToken(data.accessToken);
+      setUser(data.user);
+      persistUser(data.user);
+      setMode('backend');
+      scheduleRefresh();
+      return data.user;
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+      // This specific login request itself failed as a network error →
+      // fall through to demo mode.
+      setMode('demo');
     }
     const demoUser = DEMO_USERS[trimmed];
     if (!demoUser) {
@@ -176,7 +181,7 @@ export function AuthProvider({ children }) {
     safeSessionStorage.setItem(DEMO_KEY, JSON.stringify(demoUser));
     setUser(demoUser);
     return demoUser;
-  }, [mode, scheduleRefresh, persistUser]);
+  }, [scheduleRefresh, persistUser]);
 
   // ── Logout ────────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
