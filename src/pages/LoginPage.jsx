@@ -28,6 +28,9 @@ export default function LoginPage() {
     }
 
     setLoading(true);
+    // ═══ TEMP DEBUG — Horion smart board login investigation — remove after diagnosis ═══
+    console.warn('[HORION_DEBUG][LoginPage] before login()', { trimmed, time: new Date().toISOString() });
+    // ═══════════════════════════════════════════════════════════════════════════════════
     try {
       const user = await login(trimmed);
       toast.success(`مرحباً بك ${user.name}`);

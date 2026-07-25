@@ -26,8 +26,23 @@ export const clearAccessToken = ()  => { accessToken = null; };
 
 // ── Request interceptor ───────────────────────────────────────────────────────
 api.interceptors.request.use((config) => {
+  // ═══ TEMP DEBUG — Horion smart board login investigation — remove after diagnosis ═══
+  console.warn('[HORION_DEBUG][axios][request-interceptor]', JSON.stringify({
+    time:        new Date().toISOString(),
+    url:         config.url,
+    baseURL:     config.baseURL,
+    method:      config.method,
+    withCredentials: config.withCredentials,
+    hasAccessToken:  !!accessToken,
+  }));
+  // ═══════════════════════════════════════════════════════════════════════════════════
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
   return config;
+}, (error) => {
+  // ═══ TEMP DEBUG ═══
+  console.warn('[HORION_DEBUG][axios][request-interceptor] ERROR before send', error?.message);
+  // ═══════════════════
+  return Promise.reject(error);
 });
 
 // ── Shared refresh (single-flight) ──────────────────────────────────────────
@@ -76,8 +91,25 @@ export const refreshAccessToken = () => {
 
 // ── Response interceptor: 401 → refresh → retry ───────────────────────────────
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // ═══ TEMP DEBUG — Horion smart board login investigation — remove after diagnosis ═══
+    console.warn('[HORION_DEBUG][axios][response-interceptor] SUCCESS', JSON.stringify({
+      time: new Date().toISOString(), url: res.config?.url, status: res.status,
+    }));
+    // ═══════════════════════════════════════════════════════════════════════════════════
+    return res;
+  },
   async (err) => {
+    // ═══ TEMP DEBUG ═══
+    console.warn('[HORION_DEBUG][axios][response-interceptor] ERROR', JSON.stringify({
+      time:    new Date().toISOString(),
+      url:     err?.config?.url,
+      message: err?.message,
+      code:    err?.code,
+      hasResponse: !!err?.response,
+      status:  err?.response?.status,
+    }));
+    // ═══════════════════
     const orig = err.config;
 
     // ── Skip refresh logic for these cases ───────────────────────────────────

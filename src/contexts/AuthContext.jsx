@@ -158,8 +158,14 @@ export function AuthProvider({ children }) {
     // once on a slow network). `mode` reflects the state as of a past
     // request, not necessarily now — a stale 'demo' value must never by
     // itself prevent a genuine login attempt from reaching the backend.
+    // ═══ TEMP DEBUG — Horion smart board login investigation — remove after diagnosis ═══
+    console.warn('[HORION_DEBUG][AuthContext] before authAPI.login()', { trimmed, mode, time: new Date().toISOString() });
+    // ═══════════════════════════════════════════════════════════════════════════════════
     try {
       const data = await authAPI.login(trimmed);
+      // ═══ TEMP DEBUG ═══
+      console.warn('[HORION_DEBUG][AuthContext] after authAPI.login() — SUCCESS', { time: new Date().toISOString() });
+      // ═══════════════════
       setAccessToken(data.accessToken);
       setUser(data.user);
       persistUser(data.user);
@@ -167,6 +173,15 @@ export function AuthProvider({ children }) {
       scheduleRefresh();
       return data.user;
     } catch (err) {
+      // ═══ TEMP DEBUG ═══
+      console.warn('[HORION_DEBUG][AuthContext] after authAPI.login() — FAILED', JSON.stringify({
+        time:       new Date().toISOString(),
+        message:    err?.message,
+        code:       err?.code,
+        hasResponse: !!err?.response,
+        status:     err?.response?.status,
+      }));
+      // ═══════════════════
       if (!isNetworkError(err)) throw err;
       // This specific login request itself failed as a network error →
       // fall through to demo mode.
