@@ -68,7 +68,7 @@ export const refreshAccessToken = () => {
   refreshPromise = axios.post(
     `${BASE_URL}/auth/refresh`,
     {},
-    { withCredentials: true, timeout: 8000 }
+    { withCredentials: true, timeout: 15000 }
   )
     .then(({ data }) => {
       const t = data.data?.accessToken;
@@ -78,7 +78,16 @@ export const refreshAccessToken = () => {
       return t;
     })
     .catch((err) => {
-      clearAccessToken();
+      // Only drop the access token we already hold when the server actually
+      // rejected the refresh (401/403 — the refresh token is genuinely
+      // invalid/expired). A network error or timeout here means we simply
+      // don't know yet whether the session is still good — the access token
+      // we already have may well still be valid for the next few minutes,
+      // so keep it and let the normal reactive-401 retry (or the next
+      // scheduled attempt) sort it out once connectivity recovers, instead
+      // of forcing an unnecessary, avoidable logout on a mere hiccup.
+      const isAuthRejection = err.response?.status === 401 || err.response?.status === 403;
+      if (isAuthRejection) clearAccessToken();
       processQueue(err);
       throw err;
     })
