@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import api from '@/api/axios';
+import { accountAPI } from '@/api/services';
 import { toast } from 'sonner';
 
 const YEAR_LABELS = {
@@ -332,6 +333,8 @@ export default function StudentOnlinePage() {
   const [lessons,  setLessons]  = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [watching, setWatching] = useState(null); // { lesson, watchLog }
+  // صورة المدرس تُستخدم كـ Poster تلقائي لأي فيديو مالوش صورة خاصة به
+  const [teacherAvatar, setTeacherAvatar] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -342,6 +345,9 @@ export default function StudentOnlinePage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    accountAPI.teacherInfo().then(d => setTeacherAvatar(d?.teacher?.avatar || null)).catch(() => {});
+  }, []);
 
   const handleCompleted = (lessonId) => {
     setLessons(prev => prev.map(l =>
@@ -428,6 +434,9 @@ export default function StudentOnlinePage() {
                 const types = [...new Set(items.map(i=>i.type))];
                 const typeIcons = { video:'📹 فيديو', image:'🖼 صورة', pdf:'📄 ملف', article:'📝 شرح' };
 
+                // Poster: صورة مخصصة للدرس (thumbnailUrl) أو صورة المدرس تلقائياً كبديل
+                const posterSrc = lesson.thumbnailUrl || teacherAvatar || null;
+
                 return (
                   <Card
                     key={lesson._id}
@@ -437,49 +446,60 @@ export default function StudentOnlinePage() {
                     <CardContent className="p-0">
                       {/* Watch progression indicator line */}
                       <div className={`h-1 transition-all duration-300 ${done?'bg-emerald-500':pct>0?'bg-indigo-600':'bg-slate-200 dark:bg-slate-800'}`} style={{width:done?'100%':`${pct}%`}}/>
-                      
-                      <div className="p-5 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4 min-w-0">
-                          {/* Play/Complete State Icon */}
-                          <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm transition-transform duration-300 group-hover:scale-105 ${done?'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/20':'bg-indigo-50 dark:bg-indigo-950/10 text-indigo-600 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-900/10'}`}>
-                            {done
-                              ? <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400"/>
-                              : <Play className={`h-5 w-5 fill-current ${pct>0?'text-indigo-600 dark:text-indigo-400':'text-slate-400 dark:text-slate-500'}`}/>}
-                          </div>
-                          
-                          <div className="min-w-0 space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-bold text-slate-400 dark:text-slate-500">{idx+1}.</span>
-                              <p className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base leading-snug">{lesson.title}</p>
-                              {done && <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border-0 text-[10px] font-bold">✓ مكتمل</Badge>}
-                            </div>
-                            
-                            <div className="flex items-center gap-x-2.5 gap-y-1 mt-1.5 flex-wrap">
-                              {lesson.description && <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{lesson.description}</span>}
-                              
-                              {/* Separator dot */}
-                              {lesson.description && types.length > 0 && <span className="w-1 h-1 rounded-full bg-slate-350 dark:bg-slate-700" />}
 
-                              {types.length > 0 && (
-                                <div className="flex items-center gap-1">
-                                  {types.map(t => (
-                                    <span key={t} className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200/50 dark:border-slate-750/30">
-                                      {typeIcons[t] || t}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                              
-                              {pct > 0 && !done && (
-                                <>
-                                  <span className="w-1 h-1 rounded-full bg-slate-350 dark:bg-slate-700" />
-                                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{Math.round(pct)}% مشاهدة</span>
-                                </>
-                              )}
-                            </div>
+                      {/* Poster / Thumbnail — بنفس فكرة يوتيوب */}
+                      <div className="relative w-full aspect-video bg-slate-900 overflow-hidden">
+                        {posterSrc ? (
+                          <img src={posterSrc} alt={lesson.title} loading="lazy" className="w-full h-full object-cover"/>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900 to-slate-900">
+                            <Film className="h-10 w-10 text-white/30"/>
+                          </div>
+                        )}
+                        {/* Dim overlay + play button */}
+                        <div className="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex items-center justify-center">
+                          <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500':'bg-white/90'}`}>
+                            {done
+                              ? <CheckCircle2 className="h-7 w-7 text-white"/>
+                              : <Play className="h-6 w-6 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
                           </div>
                         </div>
-                        <ChevronLeft className="h-5 w-5 text-slate-400 dark:text-slate-650 shrink-0 group-hover:translate-x-[-2px] transition-transform duration-300"/>
+                        {done && (
+                          <Badge className="absolute top-2 left-2 bg-emerald-500 text-white border-0 text-[10px] font-bold">✓ مكتمل</Badge>
+                        )}
+                        {pct > 0 && !done && (
+                          <Badge className="absolute top-2 left-2 bg-indigo-600 text-white border-0 text-[10px] font-bold">{Math.round(pct)}%</Badge>
+                        )}
+                      </div>
+
+                      <div className="p-4 flex items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500">{idx+1}.</span>
+                            <p className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base leading-snug">{lesson.title}</p>
+                          </div>
+
+                          {/* فرع / الوحدة */}
+                          {(lesson.branch || lesson.unit) && (
+                            <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
+                              {lesson.branch && <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 rounded border border-indigo-100 dark:border-indigo-900/30">{lesson.branch}</span>}
+                              {lesson.unit && <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200/50 dark:border-slate-750/30">{lesson.unit}</span>}
+                            </div>
+                          )}
+
+                          {lesson.description && <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed">{lesson.description}</p>}
+
+                          {types.length > 0 && (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {types.map(t => (
+                                <span key={t} className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200/50 dark:border-slate-750/30">
+                                  {typeIcons[t] || t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <ChevronLeft className="h-5 w-5 text-slate-400 dark:text-slate-650 shrink-0 group-hover:translate-x-[-2px] transition-transform duration-300 mt-1"/>
                       </div>
                     </CardContent>
                   </Card>

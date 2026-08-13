@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
-import { Bell, Lock, Megaphone, Loader2, CheckCheck, Clock, Eye, X, ZoomIn } from 'lucide-react';
+import { Bell, Lock, Megaphone, Loader2, CheckCheck, Clock, Eye, X, ZoomIn, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,48 @@ const YEAR_LABELS = {
   'second-sec':  'الصف الثاني الثانوي',
   'third-sec':   'الصف الثالث الثانوي',
 };
+
+// --- عارض PDF داخل المنصة (نفس فكرة صفحة الأونلاين) — بدون تحميل إجباري ---
+function NotePdfViewer({ url, name }) {
+  const [open, setOpen] = useState(false);
+  // Google Docs Viewer يعرض الملف كـ preview جوه المنصة، من غير ما يجبر الطالب يحمله
+  const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+
+  return (
+    <>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        className="mt-3 w-full flex items-center gap-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-xl px-3 py-2.5 hover:bg-orange-100 dark:hover:bg-orange-950/30 transition-colors"
+      >
+        <FileText className="h-4 w-4 text-orange-500 shrink-0"/>
+        <span className="text-xs font-semibold truncate flex-1 text-right">{name || 'ملف PDF'}</span>
+        <span className="text-[10px] text-orange-600 dark:text-orange-400 font-bold shrink-0">فتح</span>
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col" onClick={(e)=>e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md shrink-0">
+            <p className="text-slate-100 font-bold text-sm truncate flex-1">{name || 'ملف PDF'}</p>
+            <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-100 p-2 rounded-xl">
+              <X className="h-5 w-5"/>
+            </button>
+          </div>
+          <div className="flex-1 bg-white relative">
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
+              <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+            </div>
+            <iframe
+              src={viewerUrl}
+              className="w-full h-full border-0 relative z-10"
+              title={name || 'PDF'}
+              sandbox="allow-scripts allow-same-origin allow-popups"
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 // --- مكون عرض الملاحظة وتفاصيلها ---
 function NoteCard({ note, onRead }) {
@@ -86,6 +128,8 @@ function NoteCard({ note, onRead }) {
           </div>
         )}
 
+        {note.pdfUrl && <NotePdfViewer url={note.pdfUrl} name={note.pdfName}/>}
+
         <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/40">
           <Clock className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-xs text-muted-foreground">{timeAgo(note.createdAt)}</span>
@@ -126,6 +170,8 @@ function NoteCard({ note, onRead }) {
                 </div>
               </div>
             )}
+
+            {note.pdfUrl && <NotePdfViewer url={note.pdfUrl} name={note.pdfName}/>}
 
             {/* توقيت وبيانات إضافية أسفل الملاحظة */}
             <div className="flex items-center justify-between text-xs text-muted-foreground pt-4 border-t">

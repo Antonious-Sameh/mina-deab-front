@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Helmet } from 'react-helmet';
-import { MessageSquare, Trash2, Users, Send, StickyNote, Loader2, Search, X, Image, Upload } from 'lucide-react';
+import { MessageSquare, Trash2, Users, Send, StickyNote, Loader2, Search, X, Image, Upload, FileText, Eye } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button }   from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -63,6 +63,46 @@ function ImagePicker({ imageUrl, onChange }) {
   );
 }
 
+// ── PDF picker component (mirrors ImagePicker) ────────────────────────────────
+function PdfPicker({ pdfUrl, pdfName, onChange }) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0]; if(!file) return;
+    if (file.type !== 'application/pdf') { toast.error('الملف يجب أن يكون PDF'); e.target.value=''; return; }
+    if (file.size > 4*1024*1024) { toast.error('ملف الـPDF يجب أن يكون أقل من 4 ميجا'); return; }
+    setUploading(true);
+    try {
+      const fd = new FormData(); fd.append('notePdf', file);
+      const r  = await api.post('/notes/upload-pdf', fd, { headers:{'Content-Type':'multipart/form-data'} });
+      onChange(r.data.data.pdfUrl, r.data.data.pdfName);
+      toast.success('تم رفع الـPDF ✓');
+    } catch { toast.error('فشل رفع الملف'); }
+    finally { setUploading(false); e.target.value=''; }
+  };
+
+  if (pdfUrl) return (
+    <div className="relative inline-flex items-center gap-2 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-xl px-3 py-2 max-w-full">
+      <FileText className="h-4 w-4 text-orange-500 shrink-0"/>
+      <span className="text-xs font-medium truncate max-w-[160px]">{pdfName || 'ملف PDF'}</span>
+      <button onClick={()=>onChange(null,null)} className="w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shrink-0">
+        <X className="h-3 w-3"/>
+      </button>
+    </div>
+  );
+
+  return (
+    <>
+      <Button type="button" size="sm" variant="outline" className="gap-1.5 h-8 text-xs" onClick={()=>fileRef.current?.click()} disabled={uploading}>
+        {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin"/> : <FileText className="h-3.5 w-3.5"/>}
+        {uploading ? 'جاري الرفع...' : 'إضافة PDF (اختياري)'}
+      </Button>
+      <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={handleFile}/>
+    </>
+  );
+}
+
 // ── Note card ─────────────────────────────────────────────────────────────────
 function NoteCard({ note, onDelete, yearLabel }) {
   const timeAgo = (d) => {
@@ -80,6 +120,13 @@ function NoteCard({ note, onDelete, yearLabel }) {
         <p className="text-sm leading-relaxed">{note.text}</p>
         {note.imageUrl && (
           <img src={note.imageUrl} alt="صورة الملاحظة" loading="lazy" className="max-h-40 rounded-xl border object-contain bg-muted"/>
+        )}
+        {note.pdfUrl && (
+          <a href={note.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-xl px-3 py-2 text-xs font-medium hover:bg-orange-100 dark:hover:bg-orange-950/30 transition-colors w-fit">
+            <FileText className="h-3.5 w-3.5 text-orange-500 shrink-0"/>
+            <span className="truncate max-w-[180px]">{note.pdfName || 'ملف PDF'}</span>
+            <Eye className="h-3.5 w-3.5 shrink-0"/>
+          </a>
         )}
         <div className="flex items-center gap-2 flex-wrap">
           {yearLabel && <Badge variant="outline" className="text-xs">{yearLabel}</Badge>}
@@ -104,8 +151,12 @@ export default function NotesPage() {
   const [genYear,      setGenYear]      = useState('');
   const [genText,      setGenText]      = useState('');
   const [genImage,     setGenImage]     = useState(null);
+  const [genPdfUrl,    setGenPdfUrl]    = useState(null);
+  const [genPdfName,   setGenPdfName]   = useState(null);
   const [privText,     setPrivText]     = useState('');
   const [privImage,    setPrivImage]    = useState(null);
+  const [privPdfUrl,   setPrivPdfUrl]   = useState(null);
+  const [privPdfName,  setPrivPdfName]  = useState(null);
   const [sending,      setSending]      = useState(false);
   const [search,       setSearch]       = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -162,9 +213,9 @@ export default function NotesPage() {
     if (!genYear||!genText.trim()) { toast.error('اختر السنة واكتب الملاحظة'); return; }
     setSending(true);
     try {
-      await notesAPI.create({ type:'general', text:genText.trim(), academicYear:genYear, imageUrl:genImage||null });
+      await notesAPI.create({ type:'general', text:genText.trim(), academicYear:genYear, imageUrl:genImage||null, pdfUrl:genPdfUrl||null, pdfName:genPdfName||null });
       toast.success('تم الإرسال ✓');
-      setGenText(''); setGenImage(null);
+      setGenText(''); setGenImage(null); setGenPdfUrl(null); setGenPdfName(null);
       loadNotes();
     } catch (err) { toast.error(err?.response?.data?.message||'فشل الإرسال'); }
     finally { setSending(false); }
@@ -174,9 +225,9 @@ export default function NotesPage() {
     if(!selectedStudent||!privText.trim()) { toast.error('اختر الطالب واكتب الملاحظة'); return; }
     setSending(true);
     try {
-      await notesAPI.create({ type:'private', text:privText.trim(), studentId:selectedStudent._id, imageUrl:privImage||null });
+      await notesAPI.create({ type:'private', text:privText.trim(), studentId:selectedStudent._id, imageUrl:privImage||null, pdfUrl:privPdfUrl||null, pdfName:privPdfName||null });
       toast.success('تم الإرسال ✓');
-      setPrivText(''); setPrivImage(null);
+      setPrivText(''); setPrivImage(null); setPrivPdfUrl(null); setPrivPdfName(null);
       loadNotes();
     } catch (err) { toast.error(err?.response?.data?.message||'فشل الإرسال'); }
     finally { setSending(false); }
@@ -218,7 +269,10 @@ export default function NotesPage() {
                   <SelectContent>{ACADEMIC_YEARS.map(y=><SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>)}</SelectContent>
                 </Select>
                 <Textarea value={genText} onChange={e=>setGenText(e.target.value)} placeholder="اكتب الملاحظة..." rows={3}/>
-                <ImagePicker imageUrl={genImage} onChange={setGenImage}/>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <ImagePicker imageUrl={genImage} onChange={setGenImage}/>
+                  <PdfPicker pdfUrl={genPdfUrl} pdfName={genPdfName} onChange={(u,n)=>{setGenPdfUrl(u);setGenPdfName(n);}}/>
+                </div>
                 <Button className="w-full gap-2" onClick={addGeneral} disabled={sending||!genYear||!genText.trim()}>
                   {sending?<Loader2 className="h-4 w-4 animate-spin"/>:<Send className="h-4 w-4"/>} إرسال
                 </Button>
@@ -258,7 +312,10 @@ export default function NotesPage() {
                   )}
                 </div>
                 <Textarea value={privText} onChange={e=>setPrivText(e.target.value)} placeholder="اكتب الملاحظة الخاصة..." rows={3}/>
-                <ImagePicker imageUrl={privImage} onChange={setPrivImage}/>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <ImagePicker imageUrl={privImage} onChange={setPrivImage}/>
+                  <PdfPicker pdfUrl={privPdfUrl} pdfName={privPdfName} onChange={(u,n)=>{setPrivPdfUrl(u);setPrivPdfName(n);}}/>
+                </div>
                 <Button className="w-full gap-2" onClick={addPrivate} disabled={sending||!selectedStudent||!privText.trim()}>
                   {sending?<Loader2 className="h-4 w-4 animate-spin"/>:<Send className="h-4 w-4"/>} إرسال للطالب
                 </Button>

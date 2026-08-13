@@ -824,6 +824,8 @@ function LessonModal({ lesson, onClose, onSaved }) {
   const [title, setTitle] = useState(lesson?.title || "");
   const [year, setYear] = useState(lesson?.academicYear || "");
   const [desc, setDesc] = useState(lesson?.description || "");
+  const [branch, setBranch] = useState(lesson?.branch || "");
+  const [unit, setUnit] = useState(lesson?.unit || "");
   const [pub, setPub] = useState(lesson?.published ?? false);
   const [saving, setSaving] = useState(false);
 
@@ -842,6 +844,8 @@ function LessonModal({ lesson, onClose, onSaved }) {
         await lessonsAPI.update(lesson._id, {
           title: title.trim(),
           description: desc.trim() || null,
+          branch: branch.trim() || null,
+          unit: unit.trim() || null,
           published: pub,
         });
         toast.success("تم تعديل الدرس");
@@ -850,6 +854,8 @@ function LessonModal({ lesson, onClose, onSaved }) {
           title: title.trim(),
           academicYear: year,
           description: desc.trim() || null,
+          branch: branch.trim() || null,
+          unit: unit.trim() || null,
           type: "video",
           published: pub,
         });
@@ -921,6 +927,24 @@ function LessonModal({ lesson, onClose, onSaved }) {
               onChange={(e) => setDesc(e.target.value)}
               placeholder="وصف مختصر..."
             />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>الفرع (اختياري)</Label>
+              <Input
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+                placeholder="مثال: فرع المهندسين"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>الوحدة (اختياري)</Label>
+              <Input
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="مثال: الوحدة الأولى"
+              />
+            </div>
           </div>
           <div className="flex items-center gap-3 bg-muted/30 rounded-xl px-4 py-3">
             <button
