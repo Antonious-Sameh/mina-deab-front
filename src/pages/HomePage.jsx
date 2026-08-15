@@ -54,14 +54,18 @@ export default function HomePage() {
   useEffect(() => {
     (async () => {
       try {
-        const [sData, gData] = await Promise.all([
+        const [sData, gData, centerData, onlineData] = await Promise.all([
           studentsAPI.getAll({ limit: 1 }),
           groupsAPI.getAll(),
+          studentsAPI.getAll({ limit: 1, studentType: 'center' }),
+          studentsAPI.getAll({ limit: 1, studentType: 'online' }),
         ]);
         setStats({
           totalStudents: sData.pagination?.total || 0,
           totalGroups:   gData.groups?.length    || 0,
           activeYears:   new Set(gData.groups?.map(g => g.academicYear) || []).size,
+          centerStudents: centerData.pagination?.total || 0,
+          onlineStudents: onlineData.pagination?.total || 0,
         });
       } catch {
         setStats({ totalStudents: '—', totalGroups: '—', activeYears: '—' });
@@ -152,6 +156,7 @@ export default function HomePage() {
                 color="text-indigo-600 dark:text-indigo-400" 
                 bgColor="bg-indigo-50" 
                 darkBgColor="dark:bg-indigo-950/20" 
+                sub={stats && `🏫 ${stats.centerStudents} سنتر · 🌐 ${stats.onlineStudents} أونلاين`}
               />
               <StatCard 
                 title="المجموعات" 

@@ -27,6 +27,11 @@ const ACADEMIC_YEARS = [
 
 const YEAR_LABEL = Object.fromEntries(ACADEMIC_YEARS.map(y => [y.value, y.label]));
 
+const STUDENT_TYPES = [
+  { value: 'center', label: 'سنتر',    emoji: '🏫' },
+  { value: 'online', label: 'أونلاين', emoji: '🌐' },
+];
+
 // ── Code Display Modal (after adding new student) ─────────────────────────────
 function NewStudentCodeModal({ studentName, code, onClose }) {
   const [copied, setCopied] = useState(false);
@@ -85,6 +90,7 @@ function StudentModal({ student, groups, onClose, onSaved }) {
   const [form, setForm] = useState({
     name:         student?.name         || '',
     academicYear: student?.academicYear || '',
+    studentType:  student?.studentType  || 'center',
     group:        student?.group?._id   || '',
     phone:        student?.phone        || '',
     parentPhone:  student?.parentPhone  || '',
@@ -109,7 +115,7 @@ function StudentModal({ student, groups, onClose, onSaved }) {
       toast.error('السنة الدراسية مطلوبة');
       return;
     }
-    if (!form.group) {
+    if (form.studentType === 'center' && !form.group) {
       toast.error('يجب اختيار مجموعة للطالب');
       return;
     }
@@ -118,7 +124,8 @@ function StudentModal({ student, groups, onClose, onSaved }) {
       const payload = {
         name:        form.name.trim(),
         academicYear: form.academicYear,
-        group:       form.group,
+        studentType: form.studentType,
+        group:       form.studentType === 'center' ? form.group : (form.group || null),
         phone:       form.phone.trim() || null,
         parentPhone: form.parentPhone.trim() || null,
       };
@@ -159,12 +166,25 @@ function StudentModal({ student, groups, onClose, onSaved }) {
             </Select>
           </div>
           <div className="space-y-1.5">
+            <Label>نوع الطالب <span className="text-destructive">*</span></Label>
+            <Select value={form.studentType} onValueChange={v => set('studentType', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {STUDENT_TYPES.map(t => (
+                  <SelectItem key={t.value} value={t.value}>{t.emoji} {t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
             <Label>
-              المجموعة <span className="text-destructive">*</span>
-              <span className="text-xs text-muted-foreground mr-1">(إجباري)</span>
+              المجموعة {form.studentType === 'center' && <span className="text-destructive">*</span>}
+              <span className="text-xs text-muted-foreground mr-1">
+                {form.studentType === 'center' ? '(إجباري)' : '(اختياري)'}
+              </span>
             </Label>
             <Select value={form.group} onValueChange={v => set('group', v)} disabled={!form.academicYear}>
-              <SelectTrigger className={!form.group && form.academicYear ? 'border-orange-400 ring-1 ring-orange-400/30' : ''}>
+              <SelectTrigger className={form.studentType === 'center' && !form.group && form.academicYear ? 'border-orange-400 ring-1 ring-orange-400/30' : ''}>
                 <SelectValue placeholder={!form.academicYear ? 'اختر السنة أولاً' : 'اختر المجموعة...'} />
               </SelectTrigger>
               <SelectContent>
@@ -184,7 +204,7 @@ function StudentModal({ student, groups, onClose, onSaved }) {
                 )}
               </SelectContent>
             </Select>
-            {!form.group && form.academicYear && (
+            {form.studentType === 'center' && !form.group && form.academicYear && (
               <p className="text-xs text-orange-500">⚠ يجب اختيار مجموعة</p>
             )}
           </div>
@@ -411,6 +431,15 @@ const StudentRow = memo(function StudentRow({
       <td className="px-6 py-4 font-mono text-muted-foreground text-xs">{student.codePlain}</td>
       <td className="px-6 py-4">
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+          (student.studentType || 'center') === 'online'
+            ? 'bg-sky-100 text-sky-700'
+            : 'bg-slate-100 text-slate-700'
+        }`}>
+          {(student.studentType || 'center') === 'online' ? '🌐 أونلاين' : '🏫 سنتر'}
+        </span>
+      </td>
+      <td className="px-6 py-4">
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
           student.isActive
             ? 'bg-green-100 text-green-700'
             : 'bg-red-100 text-red-700'
@@ -461,6 +490,7 @@ export default function StudentsPage() {
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState(null);
   const [search,    setSearch]    = useState('');
+  const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'center' | 'online'
   const [modal,     setModal]     = useState(null); // null | 'add' | { student }
   const [resetting, setResetting] = useState(null);
   const [resettingDevice, setResettingDevice] = useState(null);
@@ -557,10 +587,14 @@ export default function StudentsPage() {
   // Filter + group
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return q
-      ? students.filter(s => s.name.toLowerCase().includes(q) || s.codePlain?.toLowerCase().includes(q))
-      : students;
-  }, [students, search]);
+    return students.filter(s => {
+      const matchesSearch = q
+        ? s.name.toLowerCase().includes(q) || s.codePlain?.toLowerCase().includes(q)
+        : true;
+      const matchesType = typeFilter === 'all' || (s.studentType || 'center') === typeFilter;
+      return matchesSearch && matchesType;
+    });
+  }, [students, search, typeFilter]);
 
   const byYear = useMemo(() => filtered.reduce((acc, s) => {
     const yr = s.academicYear || 'unknown';
@@ -606,6 +640,25 @@ export default function StudentsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+        </div>
+
+        {/* Type filter */}
+        <div className="flex items-center gap-2">
+          {[
+            { value: 'all',    label: 'الكل' },
+            { value: 'center', label: '🏫 السنتر' },
+            { value: 'online', label: '🌐 الأونلاين' },
+          ].map(f => (
+            <Button
+              key={f.value}
+              type="button"
+              size="sm"
+              variant={typeFilter === f.value ? 'default' : 'outline'}
+              onClick={() => setTypeFilter(f.value)}
+            >
+              {f.label}
+            </Button>
+          ))}
         </div>
 
         {/* Loading */}
@@ -666,6 +719,7 @@ export default function StudentsPage() {
                                   <th className="px-6 py-3 font-semibold">اسم الطالب</th>
                                   <th className="px-6 py-3 font-semibold">ID</th>
                                   <th className="px-6 py-3 font-semibold">الكود</th>
+                                  <th className="px-6 py-3 font-semibold">النوع</th>
                                   <th className="px-6 py-3 font-semibold">الحالة</th>
                                   <th className="px-6 py-3 font-semibold text-left">إجراءات</th>
                                 </tr>
