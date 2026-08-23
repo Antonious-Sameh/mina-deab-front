@@ -151,7 +151,7 @@ export default function ReportsPage() {
               </CardContent>
             </Card>
 
-            {/*  < Grades 
+            
             {report.grades?.list?.length > 0 && (
               <Card>
                 <CardHeader className="pb-3"><CardTitle className="text-base flex gap-2"><Award className="h-5 w-5 text-primary" />الدرجات</CardTitle></CardHeader>
@@ -165,7 +165,7 @@ export default function ReportsPage() {
                 </CardContent>
               </Card>
             )}
-            */}
+            
           </div>
         )}
       </div>
