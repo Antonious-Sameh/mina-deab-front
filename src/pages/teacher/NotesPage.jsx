@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { notesAPI, studentsAPI } from '@/api/services';
 import api from '@/api/axios';
+import PDFViewer from '@/components/PDFViewer';
 import { toast } from 'sonner';
 
 const ACADEMIC_YEARS = [
@@ -103,6 +104,38 @@ function PdfPicker({ pdfUrl, pdfName, onChange }) {
   );
 }
 
+// ── Note PDF viewer button — in-app viewer instead of raw new-tab link ───────
+// BUGFIX: كان الرابط بيفتح ملف Cloudinary مباشرة في تاب جديد، ودلوقتي بيفتح
+// جوه المنصة بنفس عارض PDF.js المستخدم في كل مكان تاني بالمنصة.
+function NotePdfButton({ url, name }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        className="inline-flex items-center gap-2 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-xl px-3 py-2 text-xs font-medium hover:bg-orange-100 dark:hover:bg-orange-950/30 transition-colors w-fit"
+      >
+        <FileText className="h-3.5 w-3.5 text-orange-500 shrink-0"/>
+        <span className="truncate max-w-[180px]">{name || 'ملف PDF'}</span>
+        <Eye className="h-3.5 w-3.5 shrink-0"/>
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col antialiased" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md shrink-0">
+            <p className="text-slate-100 font-bold text-sm sm:text-base truncate flex-1">{name || 'ملف PDF'}</p>
+            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-100 hover:bg-slate-800 shrink-0 rounded-xl" onClick={() => setOpen(false)}>
+              <X className="h-5 w-5"/>
+            </Button>
+          </div>
+          <div className="flex-1 bg-white relative">
+            <PDFViewer url={url} />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Note card ─────────────────────────────────────────────────────────────────
 function NoteCard({ note, onDelete, yearLabel }) {
   const timeAgo = (d) => {
@@ -122,11 +155,7 @@ function NoteCard({ note, onDelete, yearLabel }) {
           <img src={note.imageUrl} alt="صورة الملاحظة" loading="lazy" className="max-h-40 rounded-xl border object-contain bg-muted"/>
         )}
         {note.pdfUrl && (
-          <a href={note.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-xl px-3 py-2 text-xs font-medium hover:bg-orange-100 dark:hover:bg-orange-950/30 transition-colors w-fit">
-            <FileText className="h-3.5 w-3.5 text-orange-500 shrink-0"/>
-            <span className="truncate max-w-[180px]">{note.pdfName || 'ملف PDF'}</span>
-            <Eye className="h-3.5 w-3.5 shrink-0"/>
-          </a>
+          <NotePdfButton url={note.pdfUrl} name={note.pdfName} />
         )}
         <div className="flex items-center gap-2 flex-wrap">
           {yearLabel && <Badge variant="outline" className="text-xs">{yearLabel}</Badge>}

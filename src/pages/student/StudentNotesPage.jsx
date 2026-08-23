@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { studentAPI, notesAPI } from '@/api/services';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { useNotifications } from '@/contexts/NotificationContext.jsx';
+import PDFViewer from '@/components/PDFViewer';
 import { toast } from 'sonner';
 
 const YEAR_LABELS = {
@@ -21,10 +22,10 @@ const YEAR_LABELS = {
 };
 
 // --- عارض PDF داخل المنصة (نفس فكرة صفحة الأونلاين) — بدون تحميل إجباري ---
+// BUGFIX: كان بيستخدم Google Docs Viewer اللي بيفشل كتير مع ملفات خارجية —
+// دلوقتي بيستخدم مكوّن PDFViewer الداخلي (pdf.js) بدون أي اعتماد على خدمة خارجية.
 function NotePdfViewer({ url, name }) {
   const [open, setOpen] = useState(false);
-  // Google Docs Viewer يعرض الملف كـ preview جوه المنصة، من غير ما يجبر الطالب يحمله
-  const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
 
   return (
     <>
@@ -46,15 +47,7 @@ function NotePdfViewer({ url, name }) {
             </button>
           </div>
           <div className="flex-1 bg-white relative">
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
-              <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-            </div>
-            <iframe
-              src={viewerUrl}
-              className="w-full h-full border-0 relative z-10"
-              title={name || 'PDF'}
-              sandbox="allow-scripts allow-same-origin allow-popups"
-            />
+            <PDFViewer url={url} />
           </div>
         </div>
       )}

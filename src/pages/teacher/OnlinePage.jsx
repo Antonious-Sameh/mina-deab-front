@@ -39,6 +39,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lessonsAPI } from "@/api/services";
 import api from "@/api/axios";
+import PDFViewer from "@/components/PDFViewer";
 import { toast } from "sonner";
 
 const ACADEMIC_YEARS = [
@@ -55,6 +56,41 @@ const YEAR_MAP = Object.fromEntries(
 
 function isYouTube(url) {
   return url && (url.includes("youtube.com") || url.includes("youtu.be"));
+}
+
+// ── Teacher PDF viewer button — in-app viewer (no raw-link download) ─────────
+// BUGFIX: كان الزر بيفتح رابط Cloudinary مباشرة في تاب جديد (<a target=_blank>)
+// وده مش مضمون يشتغل حسب إعدادات الحساب على Cloudinary/المتصفح، وكمان بيسمح
+// بتحميل الملف مباشرة. دلوقتي بيفتح جوه المنصة بنفس عارض PDF.js اللي الطالب
+// بيستخدمه، فالتجربة متطابقة ومضمونة عند المدرس والطالب.
+function TeacherPdfButton({ url, name }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-xs gap-1"
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+      >
+        <Eye className="h-3 w-3" />
+        فتح
+      </Button>
+      {open && (
+        <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col antialiased" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md shrink-0">
+            <p className="text-slate-100 font-bold text-sm sm:text-base truncate flex-1">{name || "ملف PDF"}</p>
+            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-100 hover:bg-slate-800 shrink-0 rounded-xl" onClick={() => setOpen(false)}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          <div className="flex-1 bg-white relative">
+            <PDFViewer url={url} />
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 // ── Content type icons & labels ───────────────────────────────────────────────
@@ -486,6 +522,21 @@ function LessonDetail({ lesson: initLesson, onBack }) {
             >
               {lesson.published ? "منشور" : "مسودة"}
             </span>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                lesson.audienceType === "online"
+                  ? "bg-blue-100 text-blue-700"
+                  : lesson.audienceType === "center"
+                    ? "bg-purple-100 text-purple-700"
+                    : "bg-amber-100 text-amber-700"
+              }`}
+            >
+              {lesson.audienceType === "online"
+                ? "Online"
+                : lesson.audienceType === "center"
+                  ? "Center"
+                  : "كل الطلاب (قديم)"}
+            </span>
             <span className="text-xs text-muted-foreground">
               {sortedItems.length} محتوى
             </span>
@@ -771,20 +822,7 @@ function LessonDetail({ lesson: initLesson, onBack }) {
                           {item.pdfName || "ملف PDF"}
                         </p>
                       </div>
-                      <a
-                        href={item.pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs gap-1"
-                        >
-                          <Eye className="h-3 w-3" />
-                          فتح
-                        </Button>
-                      </a>
+                      <TeacherPdfButton url={item.pdfUrl} name={item.pdfName} />
                     </div>
                   )}
                   {item.type === "article" && (
@@ -823,6 +861,7 @@ function LessonModal({ lesson, onClose, onSaved }) {
   const isEdit = !!lesson;
   const [title, setTitle] = useState(lesson?.title || "");
   const [year, setYear] = useState(lesson?.academicYear || "");
+  const [audienceType, setAudienceType] = useState(lesson?.audienceType || "");
   const [desc, setDesc] = useState(lesson?.description || "");
   const [branch, setBranch] = useState(lesson?.branch || "");
   const [unit, setUnit] = useState(lesson?.unit || "");
@@ -838,11 +877,16 @@ function LessonModal({ lesson, onClose, onSaved }) {
       toast.error("المرحلة الدراسية مطلوبة");
       return;
     }
+    if (!audienceType) {
+      toast.error("حدد نوع الطالب: أونلاين أم سنتر");
+      return;
+    }
     setSaving(true);
     try {
       if (isEdit) {
         await lessonsAPI.update(lesson._id, {
           title: title.trim(),
+          audienceType,
           description: desc.trim() || null,
           branch: branch.trim() || null,
           unit: unit.trim() || null,
@@ -853,6 +897,7 @@ function LessonModal({ lesson, onClose, onSaved }) {
         await lessonsAPI.create({
           title: title.trim(),
           academicYear: year,
+          audienceType,
           description: desc.trim() || null,
           branch: branch.trim() || null,
           unit: unit.trim() || null,
@@ -920,6 +965,23 @@ function LessonModal({ lesson, onClose, onSaved }) {
               </Select>
             </div>
           )}
+          <div className="space-y-1.5">
+            <Label>
+              نوع الطالب <span className="text-destructive">*</span>
+            </Label>
+            <Select value={audienceType} onValueChange={setAudienceType}>
+              <SelectTrigger>
+                <SelectValue placeholder="اختر Online أم Center..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="online">Online — أونلاين</SelectItem>
+                <SelectItem value="center">Center — سنتر</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              هذا الفيديو هيظهر بس لطلاب النوع المحدد في نفس المرحلة الدراسية.
+            </p>
+          </div>
           <div className="space-y-1.5">
             <Label>وصف الدرس (اختياري)</Label>
             <Input
@@ -1157,6 +1219,22 @@ export default function OnlinePage() {
                             >
                               {lesson.published ? "منشور" : "مسودة"}
                             </span>
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] px-1.5 py-0 h-4 ${
+                                lesson.audienceType === "online"
+                                  ? "border-blue-300 text-blue-600"
+                                  : lesson.audienceType === "center"
+                                    ? "border-purple-300 text-purple-600"
+                                    : "border-amber-300 text-amber-600"
+                              }`}
+                            >
+                              {lesson.audienceType === "online"
+                                ? "Online"
+                                : lesson.audienceType === "center"
+                                  ? "Center"
+                                  : "كل الطلاب"}
+                            </Badge>
                           </div>
                         </div>
                         <div

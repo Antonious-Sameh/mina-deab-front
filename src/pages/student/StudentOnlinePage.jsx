@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import api from '@/api/axios';
 import { accountAPI } from '@/api/services';
+import PDFViewer from '@/components/PDFViewer';
 import { toast } from 'sonner';
 
 const YEAR_LABELS = {
@@ -25,6 +26,35 @@ const YEAR_LABELS = {
 const COMPLETION_THRESHOLD = 80;
 const HEARTBEAT_INTERVAL   = 15;
 
+// ── Landscape-on-fullscreen helper ────────────────────────────────────────────
+// عند دخول وضع ملء الشاشة (سواء بزرار المشغّل بتاع يوتيوب أو زرار الفيديو
+// العادي)، نحاول نقفل الاتجاه أفقي (Landscape) على الموبايل. الـ Screen
+// Orientation Lock API مدعوم بس على متصفحات Chromium على أندرويد وبيتطلب
+// إننا نكون بالفعل جوه Fullscreen — لو المتصفح/الجهاز مش بيدعمها (زي سفاري
+// على آيفون، اللي مبيدعمهاش خالص) بنكتفي بإن المستخدم يلف الموبايل يدويًا،
+// من غير ما نكسر تشغيل الفيديو أو نظهر أي error للمستخدم.
+function attachLandscapeOnFullscreen(containerEl) {
+  if (!containerEl) return () => {};
+  const tryLock = () => {
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    if (fsEl && containerEl.contains(fsEl)) {
+      try {
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(() => {});
+        }
+      } catch { /* غير مدعوم — تجاهل بأمان */ }
+    } else {
+      try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch {}
+    }
+  };
+  document.addEventListener('fullscreenchange', tryLock);
+  document.addEventListener('webkitfullscreenchange', tryLock);
+  return () => {
+    document.removeEventListener('fullscreenchange', tryLock);
+    document.removeEventListener('webkitfullscreenchange', tryLock);
+  };
+}
+
 function extractYouTubeId(url) {
   if (!url) return null;
   const patterns = [/youtu\.be\/([^?&#]+)/,/youtube\.com\/watch\?v=([^&#]+)/,/youtube\.com\/embed\/([^?&#]+)/,/youtube\.com\/shorts\/([^?&#]+)/];
@@ -34,6 +64,7 @@ function extractYouTubeId(url) {
 
 // ── YouTube Player with tracking ──────────────────────────────────────────────
 function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
+  const containerRef = useRef(null);
   const iframeRef = useRef(null);
   const playerRef = useRef(null);
   const timerRef  = useRef(null);
@@ -41,7 +72,19 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
   const lastSent  = useRef(0);
   const plays     = useRef(0);
   const ytId      = extractYouTubeId(videoUrl);
-  const embedUrl  = ytId ? `https://www.youtube.com/embed/${ytId}?enablejsapi=1&rel=0&modestbranding=1&showinfo=0&iv_load_policy=3&color=white&playsinline=1` : null;
+  // ── حماية/تجربة المشاهدة ─────────────────────────────────────────────────
+  // • youtube-nocookie.com: نطاق يوتيوب الرسمي المخصص للـ embed بخصوصية أعلى
+  //   وواجهة مشغّل أبسط (أقل عناصر UI زيادة عن اللزوم) بدل youtube.com العادي.
+  // • rel=0 / modestbranding=1 / iv_load_policy=3: بتقلل الفيديوهات المقترحة
+  //   والشعار والتعليقات التوضيحية.
+  // ملحوظة مهمة (حد فعلي حقيقي): يوتيوب مبيوفرش أي parameter رسمي لإخفاء أي
+  // زرار "مشاركة" من شاشة التحكم بتاعته، لأن الـ iframe ده محتوى تابع لجوجل
+  // مش لينا (Cross-Origin) — أي محاولة "نغطي" عليه بعنصر شفاف هتبقى حماية
+  // وهمية وهتكسر باقي أزرار التحكم (play/pause/fullscreen) اللي بتتحرك مكانها
+  // حسب حالة المشغل، فمعمولتهاش عمدًا. لو إخفاء زرار المشاركة شرط أساسي
+  // 100%، الحل الوحيد الحقيقي هو استضافة الفيديو مباشرة (Cloudinary) بدل
+  // يوتيوب واستخدام DirectVideoPlayer اللي إحنا متحكمين في كل عناصره بالكامل.
+  const embedUrl  = ytId ? `https://www.youtube-nocookie.com/embed/${ytId}?enablejsapi=1&rel=0&modestbranding=1&showinfo=0&iv_load_policy=3&color=white&playsinline=1&fs=1` : null;
 
   useEffect(() => {
     if (!ytId) return;
@@ -79,11 +122,14 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
     return () => { clearInterval(timerRef.current); playerRef.current?.destroy?.(); };
   }, [ytId, lessonId]);
 
+  // تفعيل وضع Landscape تلقائيًا عند دخول ملء الشاشة على الموبايل (لو مدعوم)
+  useEffect(() => attachLandscapeOnFullscreen(containerRef.current), []);
+
   if (!embedUrl) return <p className="text-slate-500 text-center py-8">رابط الفيديو غير صحيح</p>;
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 shadow-lg bg-black group" style={{paddingBottom:'56.25%'}}>
+    <div ref={containerRef} className="relative w-full rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 shadow-lg bg-black group" style={{paddingBottom:'56.25%'}}>
       <iframe ref={iframeRef} src={embedUrl} className="absolute inset-0 w-full h-full"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen title="درس"/>
     </div>
   );
@@ -91,6 +137,7 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
 
 // ── Direct video player ───────────────────────────────────────────────────────
 function DirectVideoPlayer({ videoUrl, lessonId, onProgress }) {
+  const containerRef = useRef(null);
   const videoRef  = useRef(null);
   const watched   = useRef(0);
   const lastSent  = useRef(0);
@@ -116,17 +163,40 @@ function DirectVideoPlayer({ videoUrl, lessonId, onProgress }) {
     return () => { clearInterval(interval.current); v.removeEventListener('play',onPlay); v.removeEventListener('pause',onPause); v.removeEventListener('ended',onEnded); };
   }, [lessonId, send]);
 
-  return <video ref={videoRef} src={videoUrl} controls preload="metadata" controlsList="nodownload" className="w-full rounded-2xl bg-black shadow-lg border border-slate-200/80 dark:border-slate-800/80" style={{maxHeight:'460px'}}/>;
+  // تفعيل وضع Landscape تلقائيًا عند دخول ملء الشاشة على الموبايل (لو مدعوم)
+  useEffect(() => attachLandscapeOnFullscreen(containerRef.current), []);
+
+  return (
+    <div ref={containerRef}>
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        controls
+        preload="metadata"
+        // nodownload: يشيل زرار التحميل من شريط التحكم (لو المتصفح بيدعمه).
+        // noremoteplayback: يشيل زرار الـ Cast (مشاركة على شاشة تانية).
+        // disablePictureInPicture: يمنع فصل الفيديو في نافذة عائمة مستقلة.
+        controlsList="nodownload noremoteplayback"
+        disablePictureInPicture
+        onContextMenu={(e) => e.preventDefault()} // يمنع "حفظ الفيديو باسم..." من كليك يمين
+        className="w-full rounded-2xl bg-black shadow-lg border border-slate-200/80 dark:border-slate-800/80"
+        style={{maxHeight:'460px'}}
+      />
+    </div>
+  );
 }
 
 // ── PDF Viewer — opens inline inside platform ─────────────────────────────────
 // ── PDF Viewer — fullscreen in-app viewer, NO download option ────────────────
+// BUGFIX: previously rendered via a Google Docs Viewer iframe
+// (docs.google.com/viewer?url=...), which is a third-party service that
+// frequently fails to load PDFs from external hosts (Cloudinary URLs
+// included) — this is the real cause of "PDF doesn't open" for students.
+// Now uses the app's own PDFViewer (pdf.js canvas renderer) — no external
+// dependency, no download option, works with Arabic file names since only
+// the URL matters (the Arabic name is just a display label).
 function PdfViewer({ url, name }) {
   const [open, setOpen] = useState(false);
-
-  // Google Docs Viewer يعرض الملف كـ preview موثق يشتغل على الموبايل والكمبيوتر
-  // وبشكل أساسي يمنع تحميل الملف مباشرة لحماية محتواك
-  const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
 
   return (
     <>
@@ -157,16 +227,7 @@ function PdfViewer({ url, name }) {
             </Button>
           </div>
           <div className="flex-1 bg-white relative">
-            {/* Ambient loading indicator behind iframe */}
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-900">
-              <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-            </div>
-            <iframe
-              src={viewerUrl}
-              className="w-full h-full border-0 relative z-10"
-              title={name || 'PDF'}
-              sandbox="allow-scripts allow-same-origin allow-popups"
-            />
+            <PDFViewer url={url} />
           </div>
         </div>
       )}

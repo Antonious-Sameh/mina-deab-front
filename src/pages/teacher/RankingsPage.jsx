@@ -38,19 +38,19 @@ export default function RankingsPage() {
     if (!year || !examType) return;
     setLoadingExams(true);
 
+    // ملاحظة: امتحانات الورقي والإلكتروني بيتم تخزينهم بنفس الطريقة تمامًا
+    // (مستند Exam حقيقي + درجات مربوطة بـ exam._id) — فبنجيبهم من نفس الـ
+    // endpoint (/exams) ونفلتر بس حسب النوع، عشان الترتيب يطابق فعليًا
+    // الامتحانات اللي المدرس بيدخلها من صفحة الدرجات.
     const fetchExams = async () => {
       try {
-        if (examType === 'electronic') {
-          const r = await api.get('/exams', { params: { year } });
-          const list = (r.data.data.exams || []).filter(e =>
-            (e.examType === 'electronic' || !e.examType) && e.status !== 'draft'
-          );
-          setExams(list.map(e => ({ id: e._id, title: e.title, maxScore: e.maxScore })));
-        } else {
-          // Paper: get distinct exam titles from grades
-          const r = await api.get('/grades/paper-exams', { params: { year } });
-          setExams((r.data.data.paperExams || []).map(e => ({ title: e._id, maxScore: e.maxScore })));
-        }
+        const r = await api.get('/exams', { params: { year } });
+        const list = (r.data.data.exams || []).filter(e =>
+          examType === 'electronic'
+            ? (e.examType === 'electronic' || !e.examType) && e.status !== 'draft'
+            : e.examType === 'paper' && e.status !== 'draft'
+        );
+        setExams(list.map(e => ({ id: e._id, title: e.title, maxScore: e.maxScore })));
       } catch { toast.error('فشل تحميل قائمة الامتحانات'); }
       finally { setLoadingExams(false); }
     };
@@ -63,9 +63,7 @@ export default function RankingsPage() {
     if (!year || !examType || !selectedExam) return;
     setLoading(true);
 
-    const params = { year, examType };
-    if (examType === 'electronic') params.examId    = selectedExam.id;
-    else                           params.examTitle = selectedExam.title;
+    const params = { year, examType, examId: selectedExam.id };
 
     api.get('/grades/exam-rankings', { params })
       .then(r => setRankings(r.data.data.rankings || []))
