@@ -179,6 +179,7 @@ function DirectVideoPlayer({ videoUrl, lessonId, onProgress }) {
         controlsList="nodownload noremoteplayback"
         disablePictureInPicture
         onContextMenu={(e) => e.preventDefault()} // يمنع "حفظ الفيديو باسم..." من كليك يمين
+        onDragStart={(e) => e.preventDefault()}   // يمنع سحب الفيديو لسطح المكتب لحفظه
         className="w-full rounded-2xl bg-black shadow-lg border border-slate-200/80 dark:border-slate-800/80"
         style={{maxHeight:'460px'}}
       />

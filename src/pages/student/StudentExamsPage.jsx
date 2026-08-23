@@ -13,6 +13,7 @@ import api from '@/api/axios';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import FileViewerModal from '@/components/FileViewerModal';
+import PDFViewer from '@/components/PDFViewer';
 
 const YEAR_LABELS = {
   'first-prep':  'الصف الأول الإعدادي',
@@ -117,18 +118,11 @@ function AnswerSheetsModal({ exam, onClose }) {
   );
 }
 
-/** Renders one sheet — Google Docs Viewer for PDF (same as online page), image inline */
+/** Renders one sheet — uses the app's own PDFViewer for PDF (no external
+ *  dependency, was previously Google Docs Viewer which frequently failed) */
 function SheetViewer({ url, type }) {
   if (type === 'pdf') {
-    const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
-    return (
-      <iframe
-        src={viewerUrl}
-        className="w-full h-full border-0"
-        title="نموذج الإجابة"
-        sandbox="allow-scripts allow-same-origin allow-popups"
-      />
-    );
+    return <PDFViewer url={url} />;
   }
   return (
     <div className="h-full overflow-auto flex items-center justify-center bg-muted/20 p-4">

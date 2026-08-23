@@ -1,20 +1,21 @@
 /**
  * FileViewerModal.jsx
- * Shared modal — same approach as StudentOnlinePage's PdfViewer (Google Docs Viewer).
- * Works cross-origin, no download button, no PDF.js complexity.
+ * BUGFIX: was using Google Docs Viewer (docs.google.com/viewer) to display
+ * PDFs — this is a third-party Google service that frequently fails to load
+ * PDFs hosted on external hosts like Cloudinary, showing "No preview
+ * available" / "لم تتوفر معاينة" instead of the file. It is unreliable and
+ * outside our control. Now uses the app's own PDFViewer (pdf.js canvas
+ * renderer, no external dependency, no download button) for PDFs — same
+ * component already used across Online Videos and Notes.
  */
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import PDFViewer from '@/components/PDFViewer';
 
 export default function FileViewerModal({ url, type, title = 'عرض الملف', onClose }) {
   if (!url) return null;
-
-  // Same as StudentOnlinePage — Google Docs Viewer handles PDF display inline
-  const viewerUrl = type === 'pdf'
-    ? `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`
-    : url;
 
   return (
     <div className="fixed inset-0 z-[60] bg-black flex flex-col">
@@ -34,12 +35,7 @@ export default function FileViewerModal({ url, type, title = 'عرض الملف'
       {/* Content */}
       <div className="flex-1 bg-white overflow-hidden">
         {type === 'pdf' ? (
-          <iframe
-            src={viewerUrl}
-            className="w-full h-full border-0"
-            title={title}
-            sandbox="allow-scripts allow-same-origin allow-popups"
-          />
+          <PDFViewer url={url} />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-muted/20 p-4 overflow-auto">
             <img
