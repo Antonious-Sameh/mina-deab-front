@@ -47,7 +47,9 @@ export default function PDFViewer({ url }) {
   const [totalPages,  setTotalPages]  = useState(0);
   const [scale,       setScale]       = useState(1.3);
   const [status,      setStatus]      = useState('loading'); // loading | ready | error
+  const [errorMsg,    setErrorMsg]    = useState('');
   const [pageLoading, setPageLoading] = useState(false);
+  const [retryKey,    setRetryKey]    = useState(0); // BUGFIX: retry button used to do nothing — see effect below
   const canvasRef       = useRef(null);
   const renderTaskRef   = useRef(null);
 
@@ -59,9 +61,12 @@ export default function PDFViewer({ url }) {
 
     (async () => {
       setStatus('loading');
+      setErrorMsg('');
       setPdf(null);
       setCurrentPage(1);
       setTotalPages(0);
+
+      let proxyFailureMsg = '';
 
       try {
         const pdfjs = await getPdfjsLib();
@@ -82,6 +87,22 @@ export default function PDFViewer({ url }) {
         } catch (proxyErr) {
           console.error('[PDFViewer] proxy fetch failed, falling back to direct URL:', proxyErr);
           bytes = null; // fall through to direct-URL attempt below
+
+          // لو رجّع السيرفر سبب واضح للمشكلة (زي حظر PDF على مستوى حساب
+          // Cloudinary)، بنحتفظ بيه عشان نعرضه للمستخدم لو فشلت كل المحاولات،
+          // بدل رسالة عامة ملهاش معنى.
+          try {
+            const raw = proxyErr?.response?.data;
+            if (raw) {
+              // responseType كان arraybuffer، فرسالة الخطأ من السيرفر بتيجي كـ
+              // ArrayBuffer برضو — لازم نفكّها كنص عشان نقرا رسالة JSON منها.
+              const text = raw instanceof ArrayBuffer
+                ? new TextDecoder('utf-8').decode(new Uint8Array(raw))
+                : (typeof raw === 'string' ? raw : '');
+              const parsed = text ? JSON.parse(text) : null;
+              if (parsed?.message) proxyFailureMsg = parsed.message;
+            }
+          } catch { /* تجاهل — هنستخدم الرسالة العامة بدلها */ }
         }
 
         const loadingTask = bytes
@@ -103,6 +124,7 @@ export default function PDFViewer({ url }) {
       } catch (err) {
         if (!cancelled) {
           console.error('[PDFViewer] load error:', err);
+          if (proxyFailureMsg) setErrorMsg(proxyFailureMsg);
           setStatus('error');
         }
       }
@@ -115,7 +137,7 @@ export default function PDFViewer({ url }) {
       // explicitly, otherwise every PDF viewed in a session stays in memory.
       if (loadedDoc) { try { loadedDoc.destroy(); } catch {} }
     };
-  }, [url]);
+  }, [url, retryKey]); // BUGFIX: retryKey forces this effect to re-run on retry (was [url] only, so "إعادة المحاولة" never actually re-fetched anything)
 
   // ── Render one page to <canvas> ──────────────────────────────────────────
   const renderPage = useCallback(async (doc, pageNum, pageScale) => {
@@ -175,9 +197,11 @@ export default function PDFViewer({ url }) {
   if (status === 'error') return (
     <div className="flex flex-col items-center justify-center h-full gap-2 text-destructive p-6 text-center">
       <p className="font-medium">تعذّر تحميل الملف</p>
-      <p className="text-xs text-muted-foreground">تأكد من اتصال الإنترنت وحاول مرة أخرى</p>
+      <p className="text-xs text-muted-foreground max-w-sm">
+        {errorMsg || 'تأكد من اتصال الإنترنت وحاول مرة أخرى'}
+      </p>
       <Button size="sm" variant="outline" className="mt-2"
-        onClick={() => { setStatus('loading'); setPdf(null); }}>
+        onClick={() => { setStatus('loading'); setErrorMsg(''); setPdf(null); setRetryKey(k => k + 1); }}>
         إعادة المحاولة
       </Button>
     </div>
