@@ -9,6 +9,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Loader2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import api from '@/api/axios';
 
 // ── Lazy singleton: load PDF.js once ─────────────────────────────────────────
 let _pdfjsLib = null;
@@ -66,12 +67,26 @@ export default function PDFViewer({ url }) {
         const pdfjs = await getPdfjsLib();
         const normalized = normalizeUrl(url);
 
-        // Pass URL directly to PDF.js — it fetches internally without credentials.
-        // Cloudinary public assets allow anonymous cross-origin reads.
-        const loadingTask = pdfjs.getDocument({
-          url: normalized,
-          withCredentials: false,
-        });
+        // ── الحل الحقيقي لمشكلة "تعذّر تحميل الملف" ──────────────────────
+        // كان pdf.js بيجيب الملف من Cloudinary مباشرة من المتصفح (Cross-Origin)،
+        // وده بيعتمد بالكامل على إعدادات CORS عند Cloudinary لنفس الطلب ده —
+        // وده اللي بيفشل غالبًا من غير أي رسالة واضحة. دلوقتي بنجيب البايتات
+        // عن طريق السيرفر بتاعنا (نفس الدومين، ومعاه توكن الدخول) بدل ما
+        // نسيب المتصفح يتعامل مباشرة مع Cloudinary، فمشكلة الـ CORS بتتحل
+        // من جذورها.
+        let bytes = null;
+        try {
+          const proxied = `/files/proxy?url=${encodeURIComponent(normalized)}`;
+          const resp = await api.get(proxied, { responseType: 'arraybuffer', timeout: 30000 });
+          bytes = new Uint8Array(resp.data);
+        } catch (proxyErr) {
+          console.error('[PDFViewer] proxy fetch failed, falling back to direct URL:', proxyErr);
+          bytes = null; // fall through to direct-URL attempt below
+        }
+
+        const loadingTask = bytes
+          ? pdfjs.getDocument({ data: bytes })
+          : pdfjs.getDocument({ url: normalized, withCredentials: false });
 
         const doc = await loadingTask.promise;
         if (cancelled) {
