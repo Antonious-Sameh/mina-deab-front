@@ -45,7 +45,7 @@ export default function PDFViewer({ url }) {
   const [pdf,         setPdf]         = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages,  setTotalPages]  = useState(0);
-  const [scale,       setScale]       = useState(1.3);
+  const [scale,       setScale]       = useState(0.6);
   const [status,      setStatus]      = useState('loading'); // loading | ready | error
   const [errorMsg,    setErrorMsg]    = useState('');
   const [pageLoading, setPageLoading] = useState(false);
