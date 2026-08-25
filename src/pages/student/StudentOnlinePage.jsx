@@ -62,29 +62,71 @@ function extractYouTubeId(url) {
   return null;
 }
 
+function formatTime(sec) {
+  if (!isFinite(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+const SPEED_STEPS = [1, 1.25, 1.5, 2, 0.75];
+
 // ── YouTube Player with tracking ──────────────────────────────────────────────
 function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
   const containerRef = useRef(null);
   const iframeRef = useRef(null);
   const playerRef = useRef(null);
   const timerRef  = useRef(null);
+  const hideTimerRef = useRef(null);
   const watched   = useRef(0);
   const lastSent  = useRef(0);
   const plays     = useRef(0);
   const ytId      = extractYouTubeId(videoUrl);
-  // ── حماية/تجربة المشاهدة ─────────────────────────────────────────────────
-  // • youtube-nocookie.com: نطاق يوتيوب الرسمي المخصص للـ embed بخصوصية أعلى
-  //   وواجهة مشغّل أبسط (أقل عناصر UI زيادة عن اللزوم) بدل youtube.com العادي.
-  // • rel=0 / modestbranding=1 / iv_load_policy=3: بتقلل الفيديوهات المقترحة
-  //   والشعار والتعليقات التوضيحية.
-  // ملحوظة مهمة (حد فعلي حقيقي): يوتيوب مبيوفرش أي parameter رسمي لإخفاء أي
-  // زرار "مشاركة" من شاشة التحكم بتاعته، لأن الـ iframe ده محتوى تابع لجوجل
-  // مش لينا (Cross-Origin) — أي محاولة "نغطي" عليه بعنصر شفاف هتبقى حماية
-  // وهمية وهتكسر باقي أزرار التحكم (play/pause/fullscreen) اللي بتتحرك مكانها
-  // حسب حالة المشغل، فمعمولتهاش عمدًا. لو إخفاء زرار المشاركة شرط أساسي
-  // 100%، الحل الوحيد الحقيقي هو استضافة الفيديو مباشرة (Cloudinary) بدل
-  // يوتيوب واستخدام DirectVideoPlayer اللي إحنا متحكمين في كل عناصره بالكامل.
-  const embedUrl  = ytId ? `https://www.youtube-nocookie.com/embed/${ytId}?enablejsapi=1&rel=0&modestbranding=1&showinfo=0&iv_load_policy=3&color=white&playsinline=1&fs=1` : null;
+
+  // ── حالة الـ Player المخصّص (Custom Controls) ─────────────────────────────
+  const [ready,       setReady]       = useState(false);
+  const [isPlaying,   setIsPlaying]   = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration,    setDuration]    = useState(0);
+  const [speedIdx,    setSpeedIdx]    = useState(0);
+  const [isMuted,     setIsMuted]     = useState(false);
+  const [showBar,     setShowBar]     = useState(true);
+  const [seeking,     setSeeking]     = useState(false);
+  const [seekPreview, setSeekPreview] = useState(0);
+
+  // ── إعدادات الـ Embed — كل ده متحقق منه فعليًا على مستندات يوتيوب الرسمية
+  // (developers.google.com/youtube/player_parameters، آخر تحديث معتمد) ──────
+  //
+  // • controls=0: باراميتر رسمي موثّق بيخفي شريط تحكم يوتيوب بالكامل (تشغيل/
+  //   إيقاف، الشريط الزمني، الصوت، وأي أزرار تانية فيه) من الأساس. بعد ما
+  //   بنشيله، بنبني شريط تحكم بسيط خاص بينا (تشغيل/إيقاف، شريط زمني، سرعة،
+  //   ملء الشاشة) باستخدام الـ IFrame Player API الرسمي (نفس الـ API اللي
+  //   المشروع مستخدمه أصلًا لحساب وقت المشاهدة). ده مش hack — ده استخدام
+  //   رسمي موثّق من يوتيوب نفسها ومذكور في أكتر من مصدر تقني معتمد كطريقة
+  //   قياسية لعمل custom player.
+  // • youtube-nocookie.com: نطاق يوتيوب الرسمي المخصص للخصوصية.
+  // • rel=0: بعد تغيير رسمي من يوتيوب في سبتمبر 2018، الباراميتر ده بيحدد
+  //   إن الفيديوهات المقترحة (لو ظهرت أصلًا) تكون من نفس القناة بس.
+  // • iv_load_policy=3: بيمنع ظهور التعليقات التوضيحية.
+  // • origin: باراميتر أمان رسمي موصى بيه من يوتيوب لما بنستخدم enablejsapi=1.
+  // • playsinline=1: يمنع آيفون إنه يفتح الفيديو في مشغّل خارجي لوحده.
+  //
+  // ── حاجة لازم تتقال بصراحة ودي بتفضل ظاهرة حتى مع controls=0 ─────────────
+  // من نفس المستند الرسمي (تغيير 23 أغسطس 2018): عنوان الفيديو + صورة القناة
+  // (اللي هو رابط بيودّي لصفحة الفيديو على يوتيوب — ده الأقرب لـ"Watch on
+  // YouTube") **هيفضل ظاهر في الزاوية العليا** قبل ما الطالب يشغّل الفيديو،
+  // ووقت الإيقاف المؤقت، وبعد ما الفيديو يخلص. ده تثبيته يوتيوب نفسها ومفيش
+  // parameter رسمي بيقفله خالص — **أثناء التشغيل الفعلي بس**، مع controls=0،
+  // مفيش أي عنصر يوتيوب ظاهر خالص (لا Share ولا أي حاجة تانية).
+  const embedUrl  = ytId ? `https://www.youtube-nocookie.com/embed/${ytId}?enablejsapi=1&controls=0&rel=0&iv_load_policy=3&color=white&playsinline=1&origin=${encodeURIComponent(window.location.origin)}` : null;
+
+  const resetHideTimer = useCallback(() => {
+    setShowBar(true);
+    clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      setIsPlaying(playing => { if (playing) setShowBar(false); return playing; });
+    }, 3000);
+  }, []);
 
   useEffect(() => {
     if (!ytId) return;
@@ -92,12 +134,22 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
       if (!window.YT || !iframeRef.current) return;
       playerRef.current = new window.YT.Player(iframeRef.current, {
         events: {
+          onReady: () => {
+            setReady(true);
+            setDuration(playerRef.current?.getDuration?.() || 0);
+          },
           onStateChange: (e) => {
-            if (e.data === window.YT.PlayerState.PLAYING) {
+            const playing = e.data === window.YT.PlayerState.PLAYING;
+            setIsPlaying(playing);
+            if (playing) {
+              resetHideTimer();
               plays.current++;
               timerRef.current = setInterval(() => {
                 watched.current++;
                 const total = playerRef.current?.getDuration?.() || 0;
+                const cur   = playerRef.current?.getCurrentTime?.() || 0;
+                setDuration(total);
+                setCurrentTime(cur);
                 const pct   = total > 0 ? Math.min(Math.round((watched.current/total)*100), 100) : 0;
                 onProgress(watched.current, pct);
                 if (watched.current - lastSent.current >= HEARTBEAT_INTERVAL) {
@@ -107,6 +159,8 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
                 }
               }, 1000);
             } else {
+              setShowBar(true);
+              clearTimeout(hideTimerRef.current);
               clearInterval(timerRef.current);
               const total = playerRef.current?.getDuration?.() || 0;
               const pct   = total > 0 ? Math.min(Math.round((watched.current/total)*100), 100) : 0;
@@ -119,18 +173,135 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
     };
     if (window.YT?.Player) init();
     else { window.onYouTubeIframeAPIReady = init; if (!document.getElementById('yt-api')) { const s=document.createElement('script'); s.id='yt-api'; s.src='https://www.youtube.com/iframe_api'; document.head.appendChild(s); } }
-    return () => { clearInterval(timerRef.current); playerRef.current?.destroy?.(); };
-  }, [ytId, lessonId]);
+    return () => { clearInterval(timerRef.current); clearTimeout(hideTimerRef.current); playerRef.current?.destroy?.(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ytId, lessonId]); // BUGFIX: intentionally excludes onProgress/resetHideTimer — the parent
+  // passes a new `handleProgress` function reference on every render (it isn't
+  // memoized), so including it here would destroy & recreate the YT.Player
+  // instance (and restart playback) on every re-render. Referenced via
+  // closure instead, exactly like the pre-existing progress-tracking code did.
 
   // تفعيل وضع Landscape تلقائيًا عند دخول ملء الشاشة على الموبايل (لو مدعوم)
   useEffect(() => attachLandscapeOnFullscreen(containerRef.current), []);
 
+  const togglePlay = useCallback(() => {
+    if (!playerRef.current) return;
+    if (isPlaying) playerRef.current.pauseVideo();
+    else playerRef.current.playVideo();
+  }, [isPlaying]);
+
+  const cycleSpeed = useCallback(() => {
+    if (!playerRef.current) return;
+    const next = (speedIdx + 1) % SPEED_STEPS.length;
+    setSpeedIdx(next);
+    playerRef.current.setPlaybackRate(SPEED_STEPS[next]);
+    resetHideTimer();
+  }, [speedIdx, resetHideTimer]);
+
+  const toggleMute = useCallback(() => {
+    if (!playerRef.current) return;
+    if (isMuted) { playerRef.current.unMute(); setIsMuted(false); }
+    else { playerRef.current.mute(); setIsMuted(true); }
+    resetHideTimer();
+  }, [isMuted, resetHideTimer]);
+
+  const toggleFullscreen = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+    } else {
+      (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
+    }
+    resetHideTimer();
+  }, [resetHideTimer]);
+
+  const handleSeekChange = (e) => setSeekPreview(Number(e.target.value));
+  const handleSeekStart  = () => { setSeeking(true); resetHideTimer(); };
+  const handleSeekCommit = (e) => {
+    const target = Number(e.target.value);
+    playerRef.current?.seekTo?.(target, true);
+    setCurrentTime(target);
+    setSeeking(false);
+    resetHideTimer();
+  };
+
   if (!embedUrl) return <p className="text-slate-500 text-center py-8">رابط الفيديو غير صحيح</p>;
+
+  const displayTime = seeking ? seekPreview : currentTime;
+
   return (
-    <div ref={containerRef} className="relative w-full rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 shadow-lg bg-black group" style={{paddingBottom:'56.25%'}}>
-      <iframe ref={iframeRef} src={embedUrl} className="absolute inset-0 w-full h-full"
+    <div
+      ref={containerRef}
+      className="relative w-full rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 shadow-lg bg-black group select-none"
+      style={{paddingBottom:'56.25%'}}
+      onMouseMove={resetHideTimer}
+      onTouchStart={resetHideTimer}
+    >
+      <iframe ref={iframeRef} src={embedUrl} className="absolute inset-0 w-full h-full pointer-events-none"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen title="درس"/>
+
+      {/* طبقة شفافة لالتقاط لمسة/ضغطة الطالب — مفيش أي عنصر يوتيوب تحتها
+          بيتغطى، لأن controls=0 أصلًا شايل كل عناصر التحكم من يوتيوب،
+          فمفيش حاجة نخفيها؛ إحنا بس بنمسك الضغطة عشان نشغّل/نوقّف بالـ API
+          الرسمي بدل ما نسيبها تروح لحاجة مش موجودة أصلًا. */}
+      <button
+        type="button"
+        aria-label={isPlaying ? 'إيقاف' : 'تشغيل'}
+        className="absolute inset-0 w-full h-full bg-transparent cursor-pointer"
+        onClick={() => { togglePlay(); resetHideTimer(); }}
+      />
+
+      {/* زرار تشغيل كبير في النص لما الفيديو واقف */}
+      {ready && !isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-16 h-16 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+            <Play className="h-7 w-7 text-white ms-1" fill="white" />
+          </div>
+        </div>
+      )}
+
+      {/* شريط التحكم المخصّص بينا — بديل شريط يوتيوب اللي اتشال بـ controls=0 */}
+      <div
+        className={`absolute bottom-0 inset-x-0 px-3 sm:px-4 pb-2.5 pt-8 bg-gradient-to-t from-black/85 via-black/40 to-transparent transition-opacity duration-300 ${showBar ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      >
+        <input
+          type="range"
+          min={0}
+          max={duration || 0}
+          step={0.1}
+          value={displayTime}
+          onChange={handleSeekChange}
+          onMouseDown={handleSeekStart}
+          onTouchStart={handleSeekStart}
+          onMouseUp={handleSeekCommit}
+          onTouchEnd={handleSeekCommit}
+          className="w-full h-1.5 mb-2 accent-orange-500 cursor-pointer"
+          aria-label="الشريط الزمني"
+        />
+        <div className="flex items-center justify-between gap-2 text-white">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={togglePlay} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors" aria-label={isPlaying ? 'إيقاف' : 'تشغيل'}>
+              {isPlaying
+                ? <span className="block w-4 h-4"><span className="flex gap-1"><span className="w-1.5 h-4 bg-white block rounded-sm"/><span className="w-1.5 h-4 bg-white block rounded-sm"/></span></span>
+                : <Play className="h-4 w-4" fill="white" />}
+            </button>
+            <button type="button" onClick={toggleMute} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-xs font-semibold" aria-label="الصوت">
+              {isMuted ? '🔇' : '🔊'}
+            </button>
+            <span className="text-[11px] tabular-nums text-white/90">{formatTime(displayTime)} / {formatTime(duration)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={cycleSpeed} className="px-2 py-1 hover:bg-white/10 rounded-lg transition-colors text-[11px] font-semibold" aria-label="سرعة التشغيل">
+              {SPEED_STEPS[speedIdx]}×
+            </button>
+            <button type="button" onClick={toggleFullscreen} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors" aria-label="ملء الشاشة">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
