@@ -93,6 +93,7 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
   const [showBar,     setShowBar]     = useState(true);
   const [seeking,     setSeeking]     = useState(false);
   const [seekPreview, setSeekPreview] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false); // BUGFIX: see note near the container below
 
   // ── إعدادات الـ Embed — كل ده متحقق منه فعليًا على مستندات يوتيوب الرسمية
   // (developers.google.com/youtube/player_parameters، آخر تحديث معتمد) ──────
@@ -184,6 +185,35 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
   // تفعيل وضع Landscape تلقائيًا عند دخول ملء الشاشة على الموبايل (لو مدعوم)
   useEffect(() => attachLandscapeOnFullscreen(containerRef.current), []);
 
+  // BUGFIX (controls missing / video looks zoomed inside Fullscreen):
+  // الحاوية بتاعة الفيديو بتستخدم "padding-bottom: 56.25%" عشان تحافظ على
+  // نسبة 16:9 في الوضع العادي — والنسبة دي بتتحسب دايمًا من عرض الحاوية.
+  // في وضع الـ Fullscreen، عرض الحاوية بيبقى عرض الشاشة كامل، فلو ارتفاع
+  // الشاشة الفعلي مختلف عن 56.25% من العرض (شبه كل الموبايلات كده)، جزء من
+  // مساحة الشاشة (اللي المفروض فيها شريط التحكم بتاعنا) بيفضل برّه المساحة
+  // اللي فعليًا بيتحسب عليها الفيديو — فيظهر إما جزء من الفيديو متكبّر
+  // (crop) أو شريط التحكم مش في نفس مكان الفيديو الفعلي. الحل: لما نبقى في
+  // Fullscreen فعلي، نخلي الحاوية تملأ الشاشة بالكامل (100% ارتفاع) بدل ما
+  // تتحسب كنسبة من العرض، فالفيديو وشريط التحكم يفضلوا في نفس المساحة
+  // بالظبط زي أي مشغل فيديو عادي وقت الـ Fullscreen.
+  useEffect(() => {
+    const onFsChange = () => {
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement
+        || document.mozFullScreenElement || document.msFullscreenElement;
+      setIsFullscreen(!!fsEl && containerRef.current?.contains(fsEl));
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    document.addEventListener('mozfullscreenchange', onFsChange);
+    document.addEventListener('MSFullscreenChange', onFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+      document.removeEventListener('mozfullscreenchange', onFsChange);
+      document.removeEventListener('MSFullscreenChange', onFsChange);
+    };
+  }, []);
+
   const togglePlay = useCallback(() => {
     if (!playerRef.current) return;
     if (isPlaying) playerRef.current.pauseVideo();
@@ -233,12 +263,12 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
   return (
     <div
       ref={containerRef}
-      className="relative w-full rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 shadow-lg bg-black group select-none"
-      style={{paddingBottom:'56.25%'}}
+      className={`relative w-full rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 shadow-lg bg-black group select-none ${isFullscreen ? 'h-full' : ''}`}
+      style={isFullscreen ? undefined : {paddingBottom:'56.25%'}}
       onMouseMove={resetHideTimer}
       onTouchStart={resetHideTimer}
     >
-      <iframe ref={iframeRef} src={embedUrl} className="absolute inset-0 w-full h-full pointer-events-none"
+      <iframe ref={iframeRef} src={embedUrl} width="100%" height="100%" className="absolute inset-0 w-full h-full pointer-events-none"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen title="درس"/>
 
@@ -249,13 +279,13 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
       <button
         type="button"
         aria-label={isPlaying ? 'إيقاف' : 'تشغيل'}
-        className="absolute inset-0 w-full h-full bg-transparent cursor-pointer"
+        className="absolute inset-0 w-full h-full bg-transparent cursor-pointer z-10"
         onClick={() => { togglePlay(); resetHideTimer(); }}
       />
 
       {/* زرار تشغيل كبير في النص لما الفيديو واقف */}
       {ready && !isPlaying && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <div className="w-16 h-16 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <Play className="h-7 w-7 text-white ms-1" fill="white" />
           </div>
@@ -264,7 +294,7 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
 
       {/* شريط التحكم المخصّص بينا — بديل شريط يوتيوب اللي اتشال بـ controls=0 */}
       <div
-        className={`absolute bottom-0 inset-x-0 px-3 sm:px-4 pb-2.5 pt-8 bg-gradient-to-t from-black/85 via-black/40 to-transparent transition-opacity duration-300 ${showBar ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`absolute bottom-0 inset-x-0 px-3 sm:px-4 pb-2.5 pt-8 bg-gradient-to-t from-black/85 via-black/40 to-transparent transition-opacity duration-300 z-20 ${showBar ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       >
         <input
           type="range"
