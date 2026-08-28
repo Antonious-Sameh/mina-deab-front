@@ -388,6 +388,18 @@ function SectionTotalSheet({ sectionId, sectionName, year, group, onBack }) {
     ? data.sheet
     : data.sheet.filter(row => row.student.group?._id === group));
 
+  // ترتيب تنازلي حسب إجمالي الدرجة — أعلى مجموع فوق، ثم الأقل فالأقل.
+  // الطلاب اللي لسه ملهمش درجة داخل القسم (entered:false) بيروحوا آخر
+  // الجدول، بنفس المنطق المستخدم في ترتيب الامتحانات (getExamRankings).
+  const sortedRows = useMemo(() => {
+    return [...groupRows].sort((a, b) => {
+      if (!a.entered && !b.entered) return 0;
+      if (!a.entered) return 1;
+      if (!b.entered) return -1;
+      return b.score - a.score;
+    });
+  }, [groupRows]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
@@ -412,17 +424,15 @@ function SectionTotalSheet({ sectionId, sectionName, year, group, onBack }) {
                 <tr>
                   <th className="px-4 py-2.5">#</th>
                   <th className="px-4 py-2.5">الطالب</th>
-                  <th className="px-4 py-2.5">ID</th>
                   <th className="px-4 py-2.5">إجمالي الدرجات</th>
                   <th className="px-4 py-2.5">النسبة</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {groupRows.map((row,i)=>(
+                {sortedRows.map((row,i)=>(
                   <tr key={row.student._id} className={`hover:bg-muted/20 ${!row.entered?'opacity-60':''}`}>
                     <td className="px-4 py-2.5 text-muted-foreground">{i+1}</td>
                     <td className="px-4 py-2.5 font-bold">{row.student.name}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.student.studentId ?? '—'}</td>
                     <td className="px-4 py-2.5">
                       {row.entered
                         ? <span className="font-bold text-base">{row.score} <span className="text-muted-foreground text-xs font-normal">/ {row.maxScore}</span></span>
