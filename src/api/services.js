@@ -129,6 +129,7 @@ export const gradesAPI = {
   getExamSheet:   (examId)        => api.get('/grades', { params: { exam: examId } }).then(getData),
   getStudent:     (studentId)     => api.get(`/grades/student/${studentId}`).then(getData),
   getRankings:    (year, type)    => api.get('/grades/rankings', { params: { year, type } }).then(getData),
+  getSectionTotal:(sectionId, year) => api.get('/grades/section-total', { params: { sectionId, year } }).then(getData),
   enter:          (data)          => api.post('/grades', data).then(getData),
   bulkEnter:      (data)          => api.post('/grades/bulk', data).then(getData),
   update:         (id, data)      => api.put(`/grades/${id}`, data).then(getData),

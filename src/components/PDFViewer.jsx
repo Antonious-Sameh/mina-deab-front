@@ -12,17 +12,52 @@ import { Button } from '@/components/ui/button';
 import api from '@/api/axios';
 
 // ── Lazy singleton: load PDF.js once ─────────────────────────────────────────
+// BUGFIX ("PDF لا يفتح على بعض الموبايلات"): كنا بنحمّل الـ "build" العادي من
+// pdfjs-dist (v6). النسخة دي بتستخدم صيغ JS حديثة جدًا (optional chaining,
+// private class fields, Promise.withResolvers...) جوه ملف الـ Worker نفسه،
+// ومطلوب منها كمان أساسًا إن المتصفح يدعم "Module Web Workers"
+// (`new Worker(url, { type: 'module' })`) — ودعم ده مش موجود لسه في نسبة
+// مش قليلة من الموبايلات: iOS Safari قبل 15 (ومستقر فعليًا من 16.4)،
+// وبعض متصفحات Android القديمة (WebView قديم على أجهزة اقتصادية/مش
+// محدثة). في المتصفحات دي، تحميل الـ PDF كان بيفشل أو (الأسوأ) بيفضل
+// "عالق" على شاشة التحميل من غير أي رسالة خطأ واضحة، لأن الـ Worker
+// بيفشل يشتغل من غير ما يرجّع Error صريح نقدر نمسكه.
+//
+// الحل: نستخدم الـ "legacy" build اللي بيوفرها pdfjs-dist نفسها (مفيش
+// dependency جديدة — هي جزء من نفس الباكدج المتثبتة أصلاً)، وهي مبنية
+// عشان توسّع التوافق لمتصفحات أقدم (موصى بيها رسميًا من فريق pdf.js نفسه:
+// https://github.com/mozilla/pdf.js/wiki/Frequently-Asked-Questions).
+// الطريقة والـ API زي ما هي 100%، فمفيش أي تغيير على شكل أو سلوك الفتح
+// عند المستخدمين اللي كان شغال عندهم أصلاً.
 let _pdfjsLib = null;
 async function getPdfjsLib() {
   if (_pdfjsLib) return _pdfjsLib;
-  const mod = await import('pdfjs-dist');
+  const mod = await import('pdfjs-dist/legacy/build/pdf.mjs');
   _pdfjsLib = mod;
   // Worker must be set before any getDocument() call
   _pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
+    'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
     import.meta.url,
   ).toString();
   return _pdfjsLib;
+}
+
+// ── Load timeout ──────────────────────────────────────────────────────────
+// حتى مع الـ legacy build، فيه أجهزة/متصفحات قديمة جدًا (زي iOS قبل 16.4)
+// أصلاً مش بتدعم Module Workers خالص أيًا كانت النسخة — مفيش طريقة برمجية
+// تخليها تشتغل. المشكلة إن الفشل ده كان بيظهر كـ"تحميل عالق للأبد" مش
+// كخطأ واضح. الـ timeout ده بيحوّل أي تعليق زيادة عن اللازم لحالة "error"
+// واضحة، فيظهر للمستخدم زر "افتح الملف مباشرة" (fallback) بدل ما يفضل
+// شايف الـ spinner للأبد.
+const LOAD_TIMEOUT_MS = 15000;
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('TIMEOUT')), ms);
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
 }
 
 /**
@@ -109,7 +144,12 @@ export default function PDFViewer({ url }) {
           ? pdfjs.getDocument({ data: bytes })
           : pdfjs.getDocument({ url: normalized, withCredentials: false });
 
-        const doc = await loadingTask.promise;
+        // ── حماية من "التعليق للأبد" ──────────────────────────────────────
+        // لو الـ Worker مش مدعوم أصلاً في المتصفح ده (أجهزة/إصدارات قديمة
+        // جدًا)، ممكن الـ Promise ده مايترفضش أبدًا ولا يتحلّش أبدًا —
+        // فبنحط سقف زمني معقول (15 ثانية) بدل ما نسيب المستخدم شايف
+        // "جاري تحميل الملف..." للأبد من غير أي طريقة يتصرف بيها.
+        const doc = await withTimeout(loadingTask.promise, LOAD_TIMEOUT_MS);
         if (cancelled) {
           // Loaded right after the URL changed / component unmounted —
           // nothing will ever reference it, so release it immediately.
@@ -124,7 +164,11 @@ export default function PDFViewer({ url }) {
       } catch (err) {
         if (!cancelled) {
           console.error('[PDFViewer] load error:', err);
-          if (proxyFailureMsg) setErrorMsg(proxyFailureMsg);
+          if (err?.message === 'TIMEOUT') {
+            setErrorMsg('يبدو أن هذا المتصفح لا يدعم عرض الملف داخل التطبيق. جرّب فتح الملف مباشرة بالزر بالأسفل.');
+          } else if (proxyFailureMsg) {
+            setErrorMsg(proxyFailureMsg);
+          }
           setStatus('error');
         }
       }
@@ -200,10 +244,20 @@ export default function PDFViewer({ url }) {
       <p className="text-xs text-muted-foreground max-w-sm">
         {errorMsg || 'تأكد من اتصال الإنترنت وحاول مرة أخرى'}
       </p>
-      <Button size="sm" variant="outline" className="mt-2"
-        onClick={() => { setStatus('loading'); setErrorMsg(''); setPdf(null); setRetryKey(k => k + 1); }}>
-        إعادة المحاولة
-      </Button>
+      <div className="flex items-center gap-2 mt-2">
+        <Button size="sm" variant="outline"
+          onClick={() => { setStatus('loading'); setErrorMsg(''); setPdf(null); setRetryKey(k => k + 1); }}>
+          إعادة المحاولة
+        </Button>
+        {/* Fallback ما بيكسرش الطريقة الأساسية — بيديله بديل بس لو فشلت.
+            بيفتح رابط Cloudinary العام مباشرة (الملفات public أصلاً) في تاب
+            جديد، فمتصفح الموبايل يفتحه بعارض الـ PDF المدمج فيه، من غير أي
+            حاجة تعتمد على دعم Module Workers في الموبايل. */}
+        <Button size="sm" variant="default"
+          onClick={() => window.open(normalizeUrl(url), '_blank', 'noopener,noreferrer')}>
+          فتح الملف مباشرة
+        </Button>
+      </div>
     </div>
   );
 

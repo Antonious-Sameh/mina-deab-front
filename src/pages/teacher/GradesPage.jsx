@@ -363,6 +363,87 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
   );
 }
 
+// ══════════════════════════════════════════════════════
+// SECTION TOTAL — "إجمالي درجات القسم"
+// عنصر إضافي (مش امتحان حقيقي، ومش موجود في قاعدة البيانات) بيظهر جوه كل
+// قسم/فولدر امتحانات ورقية. بيحسب مجموع درجات كل طالب في كل الامتحانات
+// الموجودة داخل هذا القسم فقط، بشكل ديناميكي من نفس بيانات Grade/Exam
+// الموجودة بالفعل — مفيش رصد درجات يدوي هنا، ومفيش نسخة مخزّنة من الدرجات.
+// بيتحدّث تلقائيًا لأنه بيتحسب من السيرفر في كل مرة تُفتح فيها الصفحة.
+// ══════════════════════════════════════════════════════
+function SectionTotalSheet({ sectionId, sectionName, year, group, onBack }) {
+  const [data,    setData]    = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    api.get('/grades/section-total', { params: { sectionId, year } })
+      .then(r => setData(r.data.data))
+      .catch(() => toast.error('فشل تحميل إجمالي درجات القسم'))
+      .finally(() => setLoading(false));
+  }, [sectionId, year]);
+
+  // نفس منطق فلترة المجموعة المستخدم في باقي كشوف الدرجات بالضبط
+  const groupRows = !data ? [] : (group === ALL_GROUPS
+    ? data.sheet
+    : data.sheet.filter(row => row.student.group?._id === group));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={onBack}><ChevronLeft className="h-4 w-4"/>رجوع للامتحانات</Button>
+        <div className="flex-1">
+          <h3 className="font-extrabold text-lg">إجمالي درجات القسم — {sectionName}</h3>
+          <p className="text-sm text-muted-foreground">
+            {ACADEMIC_YEARS.find(y=>y.value===year)?.label}
+            {data ? ` — مجموع ${data.examCount} امتحان — الدرجة الكلية: ${data.totalMaxScore}` : ''}
+          </p>
+        </div>
+      </div>
+
+      {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary"/></div> : (
+        <Card className="border shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-muted/30 border-b flex items-center gap-3 flex-wrap">
+            <Badge variant="outline">{groupRows.filter(r=>r.entered).length} من {groupRows.length} لديهم درجات</Badge>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-right">
+              <thead className="bg-muted/30 text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2.5">#</th>
+                  <th className="px-4 py-2.5">الطالب</th>
+                  <th className="px-4 py-2.5">ID</th>
+                  <th className="px-4 py-2.5">إجمالي الدرجات</th>
+                  <th className="px-4 py-2.5">النسبة</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {groupRows.map((row,i)=>(
+                  <tr key={row.student._id} className={`hover:bg-muted/20 ${!row.entered?'opacity-60':''}`}>
+                    <td className="px-4 py-2.5 text-muted-foreground">{i+1}</td>
+                    <td className="px-4 py-2.5 font-bold">{row.student.name}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.student.studentId ?? '—'}</td>
+                    <td className="px-4 py-2.5">
+                      {row.entered
+                        ? <span className="font-bold text-base">{row.score} <span className="text-muted-foreground text-xs font-normal">/ {row.maxScore}</span></span>
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {row.pct !== null
+                        ? <span className={`font-bold text-sm ${row.pct>=50?'text-green-600':'text-red-500'}`}>{row.pct}%</span>
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 function PaperGrades() {
   const [year,       setYear]       = useState('');
   const [groups,        setGroups]        = useState([]);
@@ -374,6 +455,7 @@ function PaperGrades() {
 
   const [openSectionKey, setOpenSectionKey] = useState(null); // sectionId | '__none__' | null
   const [selectedExam,   setSelectedExam]   = useState(null);
+  const [showSectionTotal, setShowSectionTotal] = useState(false); // "إجمالي درجات القسم"
 
   // Load groups when year changes
   useEffect(() => {
@@ -395,8 +477,8 @@ function PaperGrades() {
       .finally(() => setLoadingExams(false));
   }, [year]);
 
-  const handleYearChange = (val) => { setYear(val); setGroup(''); setOpenSectionKey(null); setSelectedExam(null); };
-  const handleGroupChange = (val) => { setGroup(val); setOpenSectionKey(null); setSelectedExam(null); };
+  const handleYearChange = (val) => { setYear(val); setGroup(''); setOpenSectionKey(null); setSelectedExam(null); setShowSectionTotal(false); };
+  const handleGroupChange = (val) => { setGroup(val); setOpenSectionKey(null); setSelectedExam(null); setShowSectionTotal(false); };
 
   // تقسيم الامتحانات لأقسام (فولدرات) حسب section المرتبط بكل امتحان
   // memoized عشان ما يتحسبش تاني مع كل فتح/قفل فولدر — بس لما allExams تتغير.
@@ -423,11 +505,23 @@ function PaperGrades() {
     );
   }
 
+  if (showSectionTotal && openFolder) {
+    return (
+      <SectionTotalSheet
+        sectionId={openFolder.key}
+        sectionName={openFolder.name}
+        year={year}
+        group={group}
+        onBack={() => setShowSectionTotal(false)}
+      />
+    );
+  }
+
   if (openFolder) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setOpenSectionKey(null)}><ChevronLeft className="h-4 w-4"/>الأقسام</Button>
+          <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => { setOpenSectionKey(null); setShowSectionTotal(false); }}><ChevronLeft className="h-4 w-4"/>الأقسام</Button>
           <h3 className="font-extrabold text-lg">📁 {openFolder.name}</h3>
         </div>
         <div className="space-y-2">
@@ -445,6 +539,20 @@ function PaperGrades() {
               <Badge variant="outline" className="shrink-0">رصد الدرجات</Badge>
             </div>
           ))}
+          {/* "إجمالي درجات القسم" — عنصر محسوب تلقائيًا فقط، مش امتحان حقيقي.
+              بيظهر فقط جوه قسم حقيقي (له sectionId فعلي) — مش جوه "بدون قسم" */}
+          {openFolder.key !== '__none__' && (
+            <div className="bg-card border border-dashed rounded-xl p-4 flex items-center gap-4 hover:shadow-sm cursor-pointer" onClick={() => setShowSectionTotal(true)}>
+              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                <Users className="h-5 w-5 text-blue-600"/>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold">إجمالي درجات القسم</p>
+                <p className="text-xs text-muted-foreground">مجموع درجات الطلاب في كل امتحانات هذا القسم — يُحسب تلقائيًا</p>
+              </div>
+              <Badge variant="outline" className="shrink-0">عرض الإجمالي</Badge>
+            </div>
+          )}
         </div>
       </div>
     );
