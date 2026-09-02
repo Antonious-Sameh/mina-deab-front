@@ -697,8 +697,10 @@ export default function StudentOnlinePage() {
                 const types = [...new Set(items.map(i=>i.type))];
                 const typeIcons = { video:'📹 فيديو', image:'🖼 صورة', pdf:'📄 ملف', article:'📝 شرح' };
 
-                // Poster: صورة مخصصة للدرس (thumbnailUrl) أو صورة المدرس تلقائياً كبديل
-                const posterSrc = lesson.thumbnailUrl || teacherAvatar || null;
+                // Poster: صورة الدرس المخصصة (thumbnailUrl) فقط — صورة المدرس بقت
+                // عنصر Avatar منفصل وبارز جوه الكارد (مش خلفية) عشان تبان واضحة
+                // وما تتقصش بشكل سيء زي ما كانت بتحصل قبل كده كـ cover كامل
+                const posterSrc = lesson.thumbnailUrl || null;
 
                 return (
                   <Card
@@ -721,54 +723,69 @@ export default function StudentOnlinePage() {
                             className="w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950">
-                            <Film className="h-10 w-10 text-white/25"/>
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 relative overflow-hidden">
+                            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.5),transparent_55%)]"/>
+                            <Film className="h-10 w-10 text-white/20 relative z-10"/>
                           </div>
                         )}
 
-                        {/* Gradient متعدد الطبقات لضمان وضوح النص فوق الصورة وإحساس Cinematic فاخر */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/25 to-transparent pointer-events-none"/>
-                        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent pointer-events-none"/>
+                        {/* Scrim قوي أسفل الصورة — يضمن تباين ووضوح عالي جدًا للنص/الخطوط
+                            فوق أي صورة كانت (فاتحة أو غامقة)، مش مجرد Gradient خفيف */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/5 pointer-events-none"/>
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none"/>
                         {/* إطار زجاجي رفيع داخلي — يفصل الصورة بأناقة عن باقي الكارت */}
                         <div className="absolute inset-0 ring-1 ring-inset ring-white/10 pointer-events-none"/>
 
                         {/* شريط علوي: رقم الدرس + شارة الحالة */}
                         <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center justify-center h-6 min-w-[1.5rem] px-1.5 rounded-full bg-indigo-950/55 backdrop-blur-md text-indigo-50 text-[11px] font-bold border border-white/15 shadow-sm">
+                          <span className="inline-flex items-center justify-center h-6 min-w-[1.5rem] px-1.5 rounded-full bg-indigo-600/90 backdrop-blur-md text-white text-[11px] font-bold border border-white/20 shadow-sm">
                             {idx+1}
                           </span>
                           {done ? (
-                            <Badge className="bg-emerald-500/95 text-white border-0 text-[10px] font-bold shadow-sm backdrop-blur-md">✓ مكتمل</Badge>
+                            <Badge className="bg-emerald-500 text-white border-0 text-[10px] font-bold shadow-sm backdrop-blur-md">✓ مكتمل</Badge>
                           ) : pct > 0 ? (
-                            <Badge className="bg-indigo-600/95 text-white border-0 text-[10px] font-bold shadow-sm backdrop-blur-md">{Math.round(pct)}%</Badge>
+                            <Badge className="bg-indigo-600 text-white border-0 text-[10px] font-bold shadow-sm backdrop-blur-md">{Math.round(pct)}%</Badge>
                           ) : null}
                         </div>
 
                         {/* زر التشغيل المركزي */}
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-[0_8px_28px_rgba(0,0,0,0.4)] backdrop-blur-md ring-1 ring-white/40 transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500/95':'bg-white/95'}`}>
+                          <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-md ring-1 ring-white/50 transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500':'bg-white'}`}>
                             {done
                               ? <CheckCircle2 className="h-7 w-7 sm:h-8 sm:w-8 text-white"/>
                               : <Play className="h-6 w-6 sm:h-7 sm:w-7 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
                           </div>
                         </div>
 
-                        {/* عنوان الدرس + الوحدة Overlay على الصورة — Typography هرمية واضحة:
-                            الوحدة كـ eyebrow صغير فوق العنوان، والعنوان هو أكبر عنصر ووزنه الأثقل */}
-                        <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-4 space-y-1">
-                          {(lesson.unit || lesson.branch) && (
-                            <div className="flex items-center gap-1.5 text-[10.5px] sm:text-[11px] font-bold tracking-wide text-indigo-200">
-                              <span className="h-1 w-1 rounded-full bg-indigo-400 shrink-0"/>
-                              <span className="truncate [text-shadow:0_1px_4px_rgba(0,0,0,0.5)]">
-                                {lesson.unit}
-                                {lesson.unit && lesson.branch && <span className="mx-1.5 text-white/35">•</span>}
-                                {lesson.branch}
-                              </span>
+                        {/* صورة المدرس + عنوان الدرس + الوحدة — Overlay مدمج بأناقة أسفل الصورة.
+                            صورة المدرس بقت Avatar بارز ومستقل (مش خلفية) عشان تبان واضحة جدًا
+                            وتدي انطباع شخصي قوي، جنب العنوان اللي هو أكبر عنصر ووزنه الأثقل. */}
+                        <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
+                          <div className="flex items-end gap-2.5">
+                            {teacherAvatar && (
+                              <img
+                                src={teacherAvatar}
+                                alt="المدرس"
+                                loading="lazy"
+                                className="w-11 h-11 sm:w-14 sm:h-14 rounded-full object-cover ring-2 ring-white shadow-[0_4px_14px_rgba(0,0,0,0.4)] shrink-0"
+                              />
+                            )}
+                            <div className="min-w-0 flex-1 space-y-1 pb-0.5">
+                              {(lesson.unit || lesson.branch) && (
+                                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold tracking-wide text-indigo-100">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shrink-0"/>
+                                  <span className="truncate [text-shadow:0_1px_4px_rgba(0,0,0,0.6)]">
+                                    {lesson.unit}
+                                    {lesson.unit && lesson.branch && <span className="mx-1.5 text-white/40">•</span>}
+                                    {lesson.branch}
+                                  </span>
+                                </div>
+                              )}
+                              <p className="font-extrabold text-white text-[15px] sm:text-lg leading-[1.35] tracking-tight line-clamp-2 [text-shadow:0_2px_12px_rgba(0,0,0,0.7)]">
+                                {lesson.title}
+                              </p>
                             </div>
-                          )}
-                          <p className="font-extrabold text-white text-[15px] sm:text-lg leading-[1.35] tracking-tight line-clamp-2 [text-shadow:0_2px_10px_rgba(0,0,0,0.55)]">
-                            {lesson.title}
-                          </p>
+                          </div>
                         </div>
                       </div>
 
