@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import {
   MonitorPlay, Clock, CheckCircle2, Play, Loader2,
   ChevronLeft, BarChart2, X, Image, FileText, AlignLeft,
-  ExternalLink, Eye, Film, Sparkles, BookOpen, GraduationCap
+  ExternalLink, Eye, Film, Sparkles, BookOpen
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -705,12 +705,14 @@ export default function StudentOnlinePage() {
                 return (
                   <Card
                     key={lesson._id}
-                    className={`group relative border border-slate-200/70 dark:border-slate-800/70 bg-white dark:bg-slate-900 shadow-sm cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-500/20 hover:-translate-y-1.5 hover:border-indigo-300 dark:hover:border-indigo-500/40 active:scale-[0.99] rounded-[28px] overflow-hidden ${done?'ring-2 ring-emerald-400/60 dark:ring-emerald-500/40':''}`}
+                    className={`group relative border border-slate-200/70 dark:border-slate-800/70 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-0.5 hover:border-indigo-400/40 dark:hover:border-indigo-500/40 active:scale-[0.99] ${done?'ring-1 ring-emerald-400/50 dark:ring-emerald-500/30':''}`}
                     onClick={() => setWatching({ lesson, watchLog: log })}
                   >
                     <CardContent className="p-0">
-                      {/* Poster / Thumbnail — نظيفة تمامًا، بدون نص مزدحم فوقها، عشان
-                          تبان احترافية زي منصات الفيديو الكبيرة */}
+                      {/* Watch progression indicator line */}
+                      <div className={`h-1 transition-all duration-300 ${done?'bg-emerald-500':pct>0?'bg-indigo-600':'bg-slate-200 dark:bg-slate-800'}`} style={{width:done?'100%':`${pct}%`}}/>
+
+                      {/* Poster / Thumbnail — تصميم Premium بمعلومات Overlay */}
                       <div className="relative w-full aspect-video bg-slate-900 overflow-hidden">
                         {posterSrc ? (
                           <img
@@ -718,118 +720,92 @@ export default function StudentOnlinePage() {
                             alt={lesson.title}
                             loading="lazy"
                             decoding="async"
-                            className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.08]"
+                            className="w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 relative overflow-hidden">
-                            <div className="absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.55),transparent_55%)]"/>
-                            <Film className="h-10 w-10 text-white/20 relative z-10"/>
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950">
+                            <Film className="h-10 w-10 text-white/25"/>
                           </div>
                         )}
 
-                        {/* Vignette سينمائي خفيف على الأطراف — بيدي عمق واحترافية بصرية */}
-                        <div className="absolute inset-0 pointer-events-none" style={{boxShadow:'inset 0 0 50px 6px rgba(0,0,0,0.35)'}}/>
-                        {/* تظليل خفيف بس فوق وتحت الصورة — لإبراز الشارات وزر التشغيل بس،
-                            مش لحمل نص كامل زي قبل كده */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20 pointer-events-none"/>
+                        {/* Gradient متعدد الطبقات لضمان وضوح النص فوق الصورة وإحساس Cinematic فاخر */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/30 to-transparent pointer-events-none"/>
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent pointer-events-none"/>
+                        {/* إطار زجاجي رفيع داخلي — يفصل الصورة بأناقة عن باقي الكارت */}
+                        <div className="absolute inset-0 ring-1 ring-inset ring-white/10 pointer-events-none"/>
 
                         {/* شريط علوي: رقم الدرس + شارة الحالة */}
                         <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center justify-center h-6 min-w-[1.5rem] px-1.5 rounded-full bg-black/55 backdrop-blur-md text-white text-[11px] font-bold border border-white/20 shadow-sm">
+                          <span className="inline-flex items-center justify-center h-6 min-w-[1.5rem] px-1.5 rounded-full bg-indigo-950/55 backdrop-blur-md text-indigo-50 text-[11px] font-bold border border-white/15 shadow-sm">
                             {idx+1}
                           </span>
                           {done ? (
-                            <Badge className="bg-emerald-500 text-white border-0 text-[10px] font-bold shadow-sm backdrop-blur-md">✓ مكتمل</Badge>
+                            <Badge className="bg-emerald-500/95 text-white border-0 text-[10px] font-bold shadow-sm backdrop-blur-md">✓ مكتمل</Badge>
                           ) : pct > 0 ? (
-                            <Badge className="bg-indigo-600 text-white border-0 text-[10px] font-bold shadow-sm backdrop-blur-md">{Math.round(pct)}%</Badge>
+                            <Badge className="bg-indigo-600/95 text-white border-0 text-[10px] font-bold shadow-sm backdrop-blur-md">{Math.round(pct)}%</Badge>
                           ) : null}
                         </div>
 
                         {/* زر التشغيل المركزي */}
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-md ring-1 ring-white/50 transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_10px_36px_rgba(79,70,229,0.5)] ${done?'bg-emerald-500':'bg-white'}`}>
+                          <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-[0_8px_28px_rgba(0,0,0,0.4)] backdrop-blur-md ring-1 ring-white/40 transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500/95':'bg-white/95'}`}>
                             {done
                               ? <CheckCircle2 className="h-7 w-7 sm:h-8 sm:w-8 text-white"/>
                               : <Play className="h-6 w-6 sm:h-7 sm:w-7 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
                           </div>
                         </div>
 
-                        {/* شريط تقدّم المشاهدة — مدمج أسفل الصورة زي منصات الفيديو الكبيرة
-                            (نفس فكرة يوتيوب): مش بار عادي فوق الكارت، لكنه Scrubber
-                            حقيقي حاسس إنه جزء من الفيديو نفسه. بيظهر بس لو فيه تقدّم فعلي. */}
-                        {(pct > 0 || done) && (
-                          <div className="absolute bottom-0 inset-x-0 h-[3px] bg-white/25">
-                            <div
-                              className={`h-full transition-all duration-300 ${done?'bg-emerald-400':'bg-indigo-400'}`}
-                              style={{width: done ? '100%' : `${pct}%`}}
-                            />
-                          </div>
-                        )}
+                        {/* صورة المدرس + عنوان الدرس + الوحدة — كله Overlay مدمج بأناقة أسفل
+                            الصورة نفسها. صورة المدرس بقت في صف مستقل بحجم واضح واحترافي
+                            (Ring نظيف + ظل)، والعنوان في سطره الكامل تحتها من غير أي تزاحم. */}
+                        <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-4 space-y-1.5">
+                          {(teacherAvatar || lesson.unit || lesson.branch) && (
+                            <div className="flex items-center gap-2">
+                              {teacherAvatar && (
+                                <img
+                                  src={teacherAvatar}
+                                  alt="المدرس"
+                                  loading="lazy"
+                                  className="w-9 h-9 sm:w-11 sm:h-11 rounded-full object-cover ring-2 ring-white/95 shadow-[0_3px_10px_rgba(0,0,0,0.45)] shrink-0"
+                                />
+                              )}
+                              {(lesson.unit || lesson.branch) && (
+                                <div className="min-w-0 flex items-center gap-1.5 text-[10.5px] sm:text-[11px] font-bold tracking-wide text-indigo-200">
+                                  <span className="h-1 w-1 rounded-full bg-indigo-400 shrink-0"/>
+                                  <span className="truncate [text-shadow:0_1px_4px_rgba(0,0,0,0.5)]">
+                                    {lesson.unit}
+                                    {lesson.unit && lesson.branch && <span className="mx-1.5 text-white/35">•</span>}
+                                    {lesson.branch}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <p className="font-extrabold text-white text-[15px] sm:text-lg leading-[1.35] tracking-tight line-clamp-2 [text-shadow:0_2px_10px_rgba(0,0,0,0.55)]">
+                            {lesson.title}
+                          </p>
+                        </div>
                       </div>
 
-                      {/* منطقة المحتوى — صورة المدرس بقت Avatar كبير جدًا وبارز، طالع من فوق
-                          حافة الصورة على سطح الكارت الفاتح، والعنوان بقى نص عادي على خلفية
-                          الكارت (مش فوق صورة) عشان يكون أوضح خط ممكن وأعلى تباين ممكن. */}
-                      <div className="relative px-4 sm:px-5 pt-14 sm:pt-16 pb-4 sm:pb-5">
-                        {/* Avatar المدرس — كبير جدًا وبارز، بهالة لونية ناعمة وطالع فوق
-                            حافة الصورة، بحدود بيضاء واضحة تفصله بأناقة */}
-                        {teacherAvatar && (
-                          <div className="absolute -top-11 sm:-top-14 right-4 sm:right-5 z-10">
-                            <div className="relative">
-                              <div className="absolute -inset-2 rounded-full bg-indigo-400/25 dark:bg-indigo-500/25 blur-lg -z-10 transition-opacity duration-300 group-hover:opacity-80"/>
-                              <img
-                                src={teacherAvatar}
-                                alt="المدرس"
-                                loading="lazy"
-                                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover ring-[5px] ring-white dark:ring-slate-900 shadow-[0_12px_28px_rgba(15,23,42,0.3)] transition-transform duration-300 group-hover:scale-[1.04]"
-                              />
-                              <span className="absolute -bottom-1 -left-1 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-600 ring-[3px] ring-white dark:ring-slate-900 flex items-center justify-center shadow-sm">
-                                <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white"/>
-                              </span>
+                      {/* شريط سفلي مختصر: الوصف + أنواع المحتوى */}
+                      <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          {lesson.description && (
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
+                              {lesson.description}
+                            </p>
+                          )}
+                          {types.length > 0 && (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {types.map(t => (
+                                <span key={t} className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200/50 dark:border-slate-750/30">
+                                  {typeIcons[t] || t}
+                                </span>
+                              ))}
                             </div>
-                          </div>
-                        )}
-
-                        {(lesson.unit || lesson.branch) && (
-                          <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold tracking-wide text-indigo-600 dark:text-indigo-400 mb-1.5">
-                            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shrink-0"/>
-                            <span className="truncate">
-                              {lesson.unit}
-                              {lesson.unit && lesson.branch && <span className="mx-1.5 text-slate-300 dark:text-slate-600">•</span>}
-                              {lesson.branch}
-                            </span>
-                          </div>
-                        )}
-
-                        <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg leading-[1.4] tracking-tight line-clamp-2">
-                          {lesson.title}
-                        </h3>
-
-                        {lesson.description && (
-                          <p className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mt-1.5">
-                            {lesson.description}
-                          </p>
-                        )}
-
-                        <div className="flex items-center justify-between gap-3 mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                          <div className="min-w-0 flex-1">
-                            {types.length > 0 && (
-                              <div className="flex items-center gap-1 flex-wrap">
-                                {types.map(t => (
-                                  <span key={t} className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200/50 dark:border-slate-750/30">
-                                    {typeIcons[t] || t}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <span className="flex items-center gap-1 text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400 shrink-0">
-                            <span className="hidden sm:inline opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
-                              {done ? 'مشاهدة مرة أخرى' : pct>0 ? 'استكمال المشاهدة' : 'شاهد الآن'}
-                            </span>
-                            <ChevronLeft className="h-5 w-5 text-slate-400 dark:text-slate-650 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 shrink-0 group-hover:translate-x-[-2px] transition-all duration-300"/>
-                          </span>
+                          )}
                         </div>
+                        <ChevronLeft className="h-5 w-5 text-slate-400 dark:text-slate-650 shrink-0 group-hover:translate-x-[-2px] transition-transform duration-300"/>
                       </div>
                     </CardContent>
                   </Card>
