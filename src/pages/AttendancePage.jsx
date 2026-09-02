@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   Check, X, Save, ClipboardCheck, Loader2, AlertCircle,
   Users, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   Plus, Pencil, Trash2, CalendarDays, BookOpenCheck, CheckCircle2, Wallet,
+  Search, ListFilter,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,6 +27,14 @@ function formatDateAr(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
+
+// Arabic-aware normalize for the student search box (نفس فكرة صفحة النقاط)
+const normName = (s = '') =>
+  s.toLowerCase()
+    .replace(/[أإآا]/g, 'ا')
+    .replace(/[ةه]/g,   'ه')
+    .replace(/[يى]/g,   'ي')
+    .trim();
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODALS
@@ -629,6 +638,10 @@ function SessionSheetView({ session, month, group, onBack }) {
   const [payAmounts, setPayAmounts] = useState({});
   const [payingId,   setPayingId]   = useState(null);
   const [editPayment,setEditPayment]= useState(null);
+  // فلتر عرض الغائبين فقط + مربع البحث بالاسم/الـID — أدوات عرض فقط، لا تلمس
+  // بيانات الحضور أو الدفع أبداً.
+  const [showAbsentOnly, setShowAbsentOnly] = useState(false);
+  const [search,          setSearch]        = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -640,6 +653,9 @@ function SessionSheetView({ session, month, group, onBack }) {
   }, [session._id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // لما المدرس يفتح حصة تانية، نرجّع الفلتر والبحث للوضع الافتراضي (كل الطلاب)
+  useEffect(() => { setShowAbsentOnly(false); setSearch(''); }, [session._id]);
 
   const mark = useCallback(async (studentId, status) => {
     setSavingId(studentId);
@@ -711,6 +727,21 @@ function SessionSheetView({ session, month, group, onBack }) {
   const presentCount = sheet.filter(r => r.status === 'present').length;
   const absentCount  = sheet.filter(r => r.status === 'absent').length;
 
+  // ── فلترة العرض فقط (غايبين + بحث) — بتعتمد على البيانات المحملة بالفعل،
+  // ومفيش أي تعديل على sheet نفسه أو أي API إضافي ─────────────────────────────
+  const visibleSheet = useMemo(() => {
+    let list = showAbsentOnly ? sheet.filter(r => r.status === 'absent') : sheet;
+    const raw = search.trim();
+    if (!raw) return list;
+    const q = normName(raw);
+    return list.filter(r => {
+      const nameMatch = normName(r.student.name || '').includes(q);
+      const idMatch    = String(r.student.studentId ?? '').toLowerCase().includes(raw.toLowerCase());
+      const codeMatch  = String(r.student.codePlain ?? '').toLowerCase().includes(raw.toLowerCase());
+      return nameMatch || idMatch || codeMatch;
+    });
+  }, [sheet, showAbsentOnly, search]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
@@ -720,10 +751,60 @@ function SessionSheetView({ session, month, group, onBack }) {
           <p className="text-xs text-muted-foreground">{month.name} — {formatDateAr(session.date)}</p>
         </div>
         <div className="flex items-center gap-2 text-xs sm:text-sm shrink-0">
-          <span className="flex items-center gap-1 bg-green-500/10 text-green-600 rounded-lg px-2.5 py-1 font-bold"><Check className="h-3.5 w-3.5" />{presentCount}</span>
-          <span className="flex items-center gap-1 bg-red-500/10 text-red-600 rounded-lg px-2.5 py-1 font-bold"><X className="h-3.5 w-3.5" />{absentCount}</span>
+          <span className="flex items-center gap-1 bg-green-500/10 text-green-600 rounded-lg px-2.5 py-1 font-bold">
+            <Check className="h-3.5 w-3.5" />{presentCount}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowAbsentOnly(prev => !prev)}
+            title={showAbsentOnly ? 'إظهار كل الطلاب' : 'إظهار الغائبين فقط'}
+            className={`flex items-center gap-1 rounded-lg px-2.5 py-1 font-bold transition-colors ${
+              showAbsentOnly
+                ? 'bg-red-500 text-white shadow-sm'
+                : 'bg-red-500/10 text-red-600 hover:bg-red-500/20'
+            }`}
+          >
+            <X className="h-3.5 w-3.5" />{absentCount}
+          </button>
         </div>
       </div>
+
+      {/* بحث عن طالب بالاسم أو الـID — فلترة عرض فقط، مبتلمسش بيانات الحضور */}
+      {!loading && sheet.length > 0 && (
+        <div className="space-y-2">
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="ابحث عن طالب بالاسم أو ID..."
+              className="h-11 pr-9 pl-8"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {showAbsentOnly && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2 text-xs sm:text-sm">
+              <ListFilter className="h-4 w-4 text-red-600 shrink-0" />
+              <span className="text-red-700 font-bold">بيتم عرض الطلاب الغائبين فقط في هذه الحصة</span>
+              <button
+                type="button"
+                onClick={() => setShowAbsentOnly(false)}
+                className="mr-auto text-red-700 font-bold underline underline-offset-2 hover:text-red-800 shrink-0"
+              >
+                عرض الكل
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading && <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
 
@@ -734,7 +815,16 @@ function SessionSheetView({ session, month, group, onBack }) {
         </div>
       )}
 
-      {!loading && sheet.length > 0 && (
+      {!loading && sheet.length > 0 && visibleSheet.length === 0 && (
+        <div className="text-center py-10 bg-card border rounded-2xl border-dashed">
+          <Search className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-30" />
+          <p className="text-muted-foreground text-sm">
+            {showAbsentOnly && !search ? 'لا يوجد طلاب غائبين في هذه الحصة' : `لا توجد نتائج${search ? ` للبحث عن "${search}"` : ''}`}
+          </p>
+        </div>
+      )}
+
+      {!loading && visibleSheet.length > 0 && (
         <Card className="border shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
@@ -750,7 +840,7 @@ function SessionSheetView({ session, month, group, onBack }) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {sheet.map((row, i) => (
+                {visibleSheet.map((row, i) => (
                   <AttendanceSheetRow
                     key={row.student._id}
                     row={row}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { Helmet } from 'react-helmet';
 import {
-  Loader2, Save, ClipboardList, Monitor, Users, ChevronLeft, Folder
+  Loader2, Save, ClipboardList, Monitor, Users, ChevronLeft, Folder, Search, X
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,50 @@ const ACADEMIC_YEARS = [
 
 const ALL_GROUPS = '__all__';
 
+// Arabic-aware normalize للبحث بالاسم (نفس فكرة صفحة النقاط)
+const normName = (s = '') =>
+  s.toLowerCase()
+    .replace(/[أإآا]/g, 'ا')
+    .replace(/[ةه]/g,   'ه')
+    .replace(/[يى]/g,   'ي')
+    .trim();
+
+// فلترة عرض فقط بالاسم أو الـID — لا تلمس بيانات الدرجات أبداً
+function filterRowsBySearch(rows, search) {
+  const raw = (search || '').trim();
+  if (!raw) return rows;
+  const q = normName(raw);
+  return rows.filter(row => {
+    const nameMatch = normName(row.student?.name || '').includes(q);
+    const idMatch    = String(row.student?.studentId ?? '').toLowerCase().includes(raw.toLowerCase());
+    const codeMatch  = String(row.student?.codePlain ?? '').toLowerCase().includes(raw.toLowerCase());
+    return nameMatch || idMatch || codeMatch;
+  });
+}
+
+// مربع بحث موحد الشكل يُستخدم تحت اسم الامتحان في كشوف الدرجات
+function StudentSearchInput({ value, onChange }) {
+  return (
+    <div className="relative">
+      <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <Input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="ابحث عن طالب بالاسم أو ID..."
+        className="h-10 pr-9 pl-8"
+      />
+      {value && (
+        <button
+          onClick={() => onChange('')}
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════
 // ELECTRONIC EXAMS TAB
 // ══════════════════════════════════════════════════════
@@ -45,6 +89,7 @@ function ElectronicGrades() {
   const [sheet,      setSheet]      = useState(null);
   const [loading,    setLoading]    = useState(false);
   const [saving,     setSaving]     = useState(false);
+  const [search,     setSearch]     = useState('');
 
   // Load groups when year changes
   useEffect(() => {
@@ -68,19 +113,23 @@ function ElectronicGrades() {
   useEffect(() => {
     if (!selectedEx) { setSheet(null); return; }
     setLoading(true);
+    setSearch('');
     api.get(`/grades?exam=${selectedEx}`)
       .then(r => setSheet(r.data.data))
       .catch(()=>toast.error('فشل تحميل الكشف'))
       .finally(()=>setLoading(false));
   }, [selectedEx]);
 
-  const handleYearChange = (val) => { setYear(val); setGroup(''); setExams([]); setSelectedEx(''); setSheet(null); };
-  const handleGroupChange = (val) => { setGroup(val); setSelectedEx(''); setSheet(null); };
+  const handleYearChange = (val) => { setYear(val); setGroup(''); setExams([]); setSelectedEx(''); setSheet(null); setSearch(''); };
+  const handleGroupChange = (val) => { setGroup(val); setSelectedEx(''); setSheet(null); setSearch(''); };
 
   // اعرض طلاب المجموعة المختارة، أو كل الطلاب لو "كل المجموعات"
   const groupRows = group === ALL_GROUPS
     ? (sheet?.sheet || [])
     : (sheet?.sheet?.filter(row => row.student.group?._id === group) || []);
+
+  // فلترة العرض فقط بالبحث — مفيش تأثير على الدرجات أو groupRows الأصلية
+  const visibleRows = useMemo(() => filterRowsBySearch(groupRows, search), [groupRows, search]);
 
   return (
     <div className="space-y-4">
@@ -137,6 +186,15 @@ function ElectronicGrades() {
             <Badge variant="secondary">الدرجة الكلية: {sheet.exam?.maxScore}</Badge>
             <Badge variant="outline">{groupRows.filter(r=>r.entered).length} من {groupRows.length} أُدخلت</Badge>
           </div>
+          <div className="px-4 py-3 border-b">
+            <StudentSearchInput value={search} onChange={setSearch} />
+          </div>
+          {visibleRows.length === 0 ? (
+            <div className="text-center py-10">
+              <Search className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-30" />
+              <p className="text-muted-foreground text-sm">لا توجد نتائج{search ? ` للبحث عن "${search}"` : ''}</p>
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
               <thead className="bg-muted/30 text-muted-foreground">
@@ -150,7 +208,7 @@ function ElectronicGrades() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {groupRows.map((row,i)=>{
+                {visibleRows.map((row,i)=>{
                   const pct = row.pct ?? (row.entered && sheet.exam?.maxScore>0 ? Math.round((row.score/sheet.exam.maxScore)*100) : null);
                   const dateStr = row.submittedAt
                     ? new Date(row.submittedAt).toLocaleDateString('ar-EG', {day:'2-digit',month:'2-digit',year:'numeric'})
@@ -188,6 +246,7 @@ function ElectronicGrades() {
               </tbody>
             </table>
           </div>
+          )}
         </Card>
       )}
     </div>
@@ -234,6 +293,7 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
   const [scores,  setScores]  = useState({});
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
+  const [search,  setSearch]  = useState('');
 
   // بنستخدم الـ ref ده عشان نمنع الـ useEffect بتاع حفظ الـ Draft إنه يشتغل
   // ويكتب فوق الـ Draft المحفوظ قبل ما نخلص تحميل/استرجاع البيانات أول مرة
@@ -269,6 +329,9 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
   }, [exam._id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // بحث جديد لكل امتحان مختلف — من غير ما نمسحه بعد كل حفظ لنفس الامتحان
+  useEffect(() => { setSearch(''); }, [exam._id]);
 
   // ── حفظ الدرجات كـ Draft تلقائيًا (محليًا) أثناء الكتابة، قبل الضغط على "حفظ" ──
   useEffect(() => {
@@ -312,6 +375,9 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
     return v !== undefined && v !== '';
   }).length;
 
+  // فلترة العرض فقط بالبحث — مبتأثرش على groupRows ولا على حفظ الدرجات
+  const visibleRows = useMemo(() => filterRowsBySearch(groupRows, search), [groupRows, search]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
@@ -329,7 +395,16 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
         </Button>
       </div>
 
-      {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary"/></div> : (
+      {!loading && groupRows.length > 0 && (
+        <StudentSearchInput value={search} onChange={setSearch} />
+      )}
+
+      {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary"/></div> : visibleRows.length === 0 ? (
+        <div className="text-center py-10 bg-card border rounded-2xl border-dashed">
+          <Search className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-30" />
+          <p className="text-muted-foreground text-sm">لا توجد نتائج{search ? ` للبحث عن "${search}"` : ''}</p>
+        </div>
+      ) : (
         <Card className="border shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
@@ -343,7 +418,7 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {groupRows.map((row,i)=>(
+                {visibleRows.map((row,i)=>(
                   <PaperGradeRow
                     key={row.student._id}
                     row={row}
