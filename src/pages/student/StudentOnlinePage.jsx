@@ -717,6 +717,7 @@ export default function StudentOnlinePage() {
                             src={posterSrc}
                             alt={lesson.title}
                             loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
                           />
                         ) : (
@@ -725,55 +726,55 @@ export default function StudentOnlinePage() {
                           </div>
                         )}
 
-                        {/* Gradient ثابت لضمان وضوح النص فوق الصورة */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/5 pointer-events-none"/>
+                        {/* Gradient متعدد الطبقات لضمان وضوح النص فوق الصورة وإحساس Cinematic فاخر */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/25 to-transparent pointer-events-none"/>
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent pointer-events-none"/>
+                        {/* إطار زجاجي رفيع داخلي — يفصل الصورة بأناقة عن باقي الكارت */}
+                        <div className="absolute inset-0 ring-1 ring-inset ring-white/10 pointer-events-none"/>
 
                         {/* شريط علوي: رقم الدرس + شارة الحالة */}
                         <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center justify-center h-6 min-w-[1.5rem] px-1.5 rounded-full bg-black/45 backdrop-blur-sm text-white text-[11px] font-bold border border-white/10 shadow-sm">
+                          <span className="inline-flex items-center justify-center h-6 min-w-[1.5rem] px-1.5 rounded-full bg-indigo-950/55 backdrop-blur-md text-indigo-50 text-[11px] font-bold border border-white/15 shadow-sm">
                             {idx+1}
                           </span>
                           {done ? (
-                            <Badge className="bg-emerald-500/95 text-white border-0 text-[10px] font-bold shadow-sm">✓ مكتمل</Badge>
+                            <Badge className="bg-emerald-500/95 text-white border-0 text-[10px] font-bold shadow-sm backdrop-blur-md">✓ مكتمل</Badge>
                           ) : pct > 0 ? (
-                            <Badge className="bg-indigo-600/95 text-white border-0 text-[10px] font-bold shadow-sm">{Math.round(pct)}%</Badge>
+                            <Badge className="bg-indigo-600/95 text-white border-0 text-[10px] font-bold shadow-sm backdrop-blur-md">{Math.round(pct)}%</Badge>
                           ) : null}
                         </div>
 
                         {/* زر التشغيل المركزي */}
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500/95':'bg-white/90'}`}>
+                          <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-[0_8px_28px_rgba(0,0,0,0.4)] backdrop-blur-md ring-1 ring-white/40 transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500/95':'bg-white/95'}`}>
                             {done
-                              ? <CheckCircle2 className="h-7 w-7 text-white"/>
-                              : <Play className="h-6 w-6 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
+                              ? <CheckCircle2 className="h-7 w-7 sm:h-8 sm:w-8 text-white"/>
+                              : <Play className="h-6 w-6 sm:h-7 sm:w-7 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
                           </div>
                         </div>
 
-                        {/* عنوان الدرس + الفرع/الوحدة Overlay على الصورة */}
-                        <div className="absolute inset-x-0 bottom-0 p-3.5 space-y-1.5">
-                          <p className="font-extrabold text-white text-sm sm:text-base leading-snug line-clamp-2 [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
-                            {lesson.title}
-                          </p>
-                          {(lesson.branch || lesson.unit) && (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {lesson.branch && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white backdrop-blur-sm border border-white/15">
-                                  {lesson.branch}
-                                </span>
-                              )}
-                              {lesson.unit && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white backdrop-blur-sm border border-white/15">
-                                  {lesson.unit}
-                                </span>
-                              )}
+                        {/* عنوان الدرس + الوحدة Overlay على الصورة — Typography هرمية واضحة:
+                            الوحدة كـ eyebrow صغير فوق العنوان، والعنوان هو أكبر عنصر ووزنه الأثقل */}
+                        <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-4 space-y-1">
+                          {(lesson.unit || lesson.branch) && (
+                            <div className="flex items-center gap-1.5 text-[10.5px] sm:text-[11px] font-bold tracking-wide text-indigo-200">
+                              <span className="h-1 w-1 rounded-full bg-indigo-400 shrink-0"/>
+                              <span className="truncate [text-shadow:0_1px_4px_rgba(0,0,0,0.5)]">
+                                {lesson.unit}
+                                {lesson.unit && lesson.branch && <span className="mx-1.5 text-white/35">•</span>}
+                                {lesson.branch}
+                              </span>
                             </div>
                           )}
+                          <p className="font-extrabold text-white text-[15px] sm:text-lg leading-[1.35] tracking-tight line-clamp-2 [text-shadow:0_2px_10px_rgba(0,0,0,0.55)]">
+                            {lesson.title}
+                          </p>
                         </div>
                       </div>
 
                       {/* شريط سفلي مختصر: الوصف + أنواع المحتوى */}
-                      <div className="p-3.5 flex items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1 space-y-1">
+                      <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1.5">
                           {lesson.description && (
                             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
                               {lesson.description}

@@ -566,7 +566,17 @@ const AttendanceSheetRow = memo(function AttendanceSheetRow({
   return (
     <tr className="hover:bg-muted/20">
       <td className="px-3 py-2.5 text-muted-foreground">{index + 1}</td>
-      <td className="px-3 py-2.5 font-bold">{row.student.name}</td>
+      <td className="px-3 py-2.5 font-bold">
+        {row.student.name}
+        {row.student.transferred && (
+          <span
+            className="mr-1.5 align-middle inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200"
+            title="هذا الطالب اتنقل لمجموعة تانية بعد هذه الحصة — بياناته القديمة هنا محفوظة"
+          >
+            منقول
+          </span>
+        )}
+      </td>
       <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">{row.student.studentId ?? '—'}</td>
       <td className="px-3 py-2.5 text-center">
         <button
