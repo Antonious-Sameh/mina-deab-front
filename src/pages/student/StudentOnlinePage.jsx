@@ -26,6 +26,13 @@ const YEAR_LABELS = {
 const COMPLETION_THRESHOLD = 80;
 const HEARTBEAT_INTERVAL   = 15;
 
+// ── Landscape-on-fullscreen helper ────────────────────────────────────────────
+// عند دخول وضع ملء الشاشة (سواء بزرار المشغّل بتاع يوتيوب أو زرار الفيديو
+// العادي)، نحاول نقفل الاتجاه أفقي (Landscape) على الموبايل. الـ Screen
+// Orientation Lock API مدعوم بس على متصفحات Chromium على أندرويد وبيتطلب
+// إننا نكون بالفعل جوه Fullscreen — لو المتصفح/الجهاز مش بيدعمها (زي سفاري
+// على آيفون، اللي مبيدعمهاش خالص) بنكتفي بإن المستخدم يلف الموبايل يدويًا،
+// من غير ما نكسر تشغيل الفيديو أو نظهر أي error للمستخدم.
 function attachLandscapeOnFullscreen(containerEl) {
   if (!containerEl) return () => {};
   const tryLock = () => {
@@ -64,6 +71,7 @@ function formatTime(sec) {
 
 const SPEED_STEPS = [1, 1.25, 1.5, 2, 0.75];
 
+// ── YouTube Player with tracking ──────────────────────────────────────────────
 function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
   const containerRef = useRef(null);
   const iframeRef = useRef(null);
@@ -75,6 +83,7 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
   const plays     = useRef(0);
   const ytId      = extractYouTubeId(videoUrl);
 
+  // ── حالة الـ Player المخصّص (Custom Controls) ─────────────────────────────
   const [ready,       setReady]       = useState(false);
   const [isPlaying,   setIsPlaying]   = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -84,8 +93,32 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
   const [showBar,     setShowBar]     = useState(true);
   const [seeking,     setSeeking]     = useState(false);
   const [seekPreview, setSeekPreview] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false); // BUGFIX: see note near the container below
 
+  // ── إعدادات الـ Embed — كل ده متحقق منه فعليًا على مستندات يوتيوب الرسمية
+  // (developers.google.com/youtube/player_parameters، آخر تحديث معتمد) ──────
+  //
+  // • controls=0: باراميتر رسمي موثّق بيخفي شريط تحكم يوتيوب بالكامل (تشغيل/
+  //   إيقاف، الشريط الزمني، الصوت، وأي أزرار تانية فيه) من الأساس. بعد ما
+  //   بنشيله، بنبني شريط تحكم بسيط خاص بينا (تشغيل/إيقاف، شريط زمني، سرعة،
+  //   ملء الشاشة) باستخدام الـ IFrame Player API الرسمي (نفس الـ API اللي
+  //   المشروع مستخدمه أصلًا لحساب وقت المشاهدة). ده مش hack — ده استخدام
+  //   رسمي موثّق من يوتيوب نفسها ومذكور في أكتر من مصدر تقني معتمد كطريقة
+  //   قياسية لعمل custom player.
+  // • youtube-nocookie.com: نطاق يوتيوب الرسمي المخصص للخصوصية.
+  // • rel=0: بعد تغيير رسمي من يوتيوب في سبتمبر 2018، الباراميتر ده بيحدد
+  //   إن الفيديوهات المقترحة (لو ظهرت أصلًا) تكون من نفس القناة بس.
+  // • iv_load_policy=3: بيمنع ظهور التعليقات التوضيحية.
+  // • origin: باراميتر أمان رسمي موصى بيه من يوتيوب لما بنستخدم enablejsapi=1.
+  // • playsinline=1: يمنع آيفون إنه يفتح الفيديو في مشغّل خارجي لوحده.
+  //
+  // ── حاجة لازم تتقال بصراحة ودي بتفضل ظاهرة حتى مع controls=0 ─────────────
+  // من نفس المستند الرسمي (تغيير 23 أغسطس 2018): عنوان الفيديو + صورة القناة
+  // (اللي هو رابط بيودّي لصفحة الفيديو على يوتيوب — ده الأقرب لـ"Watch on
+  // YouTube") **هيفضل ظاهر في الزاوية العليا** قبل ما الطالب يشغّل الفيديو،
+  // ووقت الإيقاف المؤقت، وبعد ما الفيديو يخلص. ده تثبيته يوتيوب نفسها ومفيش
+  // parameter رسمي بيقفله خالص — **أثناء التشغيل الفعلي بس**، مع controls=0،
+  // مفيش أي عنصر يوتيوب ظاهر خالص (لا Share ولا أي حاجة تانية).
   const embedUrl  = ytId ? `https://www.youtube-nocookie.com/embed/${ytId}?enablejsapi=1&controls=0&rel=0&iv_load_policy=3&color=white&playsinline=1&origin=${encodeURIComponent(window.location.origin)}` : null;
 
   const resetHideTimer = useCallback(() => {
@@ -143,10 +176,26 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
     else { window.onYouTubeIframeAPIReady = init; if (!document.getElementById('yt-api')) { const s=document.createElement('script'); s.id='yt-api'; s.src='https://www.youtube.com/iframe_api'; document.head.appendChild(s); } }
     return () => { clearInterval(timerRef.current); clearTimeout(hideTimerRef.current); playerRef.current?.destroy?.(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ytId, lessonId]);
+  }, [ytId, lessonId]); // BUGFIX: intentionally excludes onProgress/resetHideTimer — the parent
+  // passes a new `handleProgress` function reference on every render (it isn't
+  // memoized), so including it here would destroy & recreate the YT.Player
+  // instance (and restart playback) on every re-render. Referenced via
+  // closure instead, exactly like the pre-existing progress-tracking code did.
 
+  // تفعيل وضع Landscape تلقائيًا عند دخول ملء الشاشة على الموبايل (لو مدعوم)
   useEffect(() => attachLandscapeOnFullscreen(containerRef.current), []);
 
+  // BUGFIX (controls missing / video looks zoomed inside Fullscreen):
+  // الحاوية بتاعة الفيديو بتستخدم "padding-bottom: 56.25%" عشان تحافظ على
+  // نسبة 16:9 في الوضع العادي — والنسبة دي بتتحسب دايمًا من عرض الحاوية.
+  // في وضع الـ Fullscreen، عرض الحاوية بيبقى عرض الشاشة كامل، فلو ارتفاع
+  // الشاشة الفعلي مختلف عن 56.25% من العرض (شبه كل الموبايلات كده)، جزء من
+  // مساحة الشاشة (اللي المفروض فيها شريط التحكم بتاعنا) بيفضل برّه المساحة
+  // اللي فعليًا بيتحسب عليها الفيديو — فيظهر إما جزء من الفيديو متكبّر
+  // (crop) أو شريط التحكم مش في نفس مكان الفيديو الفعلي. الحل: لما نبقى في
+  // Fullscreen فعلي، نخلي الحاوية تملأ الشاشة بالكامل (100% ارتفاع) بدل ما
+  // تتحسب كنسبة من العرض، فالفيديو وشريط التحكم يفضلوا في نفس المساحة
+  // بالظبط زي أي مشغل فيديو عادي وقت الـ Fullscreen.
   useEffect(() => {
     const onFsChange = () => {
       const fsEl = document.fullscreenElement || document.webkitFullscreenElement
@@ -223,6 +272,10 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen title="درس"/>
 
+      {/* طبقة شفافة لالتقاط لمسة/ضغطة الطالب — مفيش أي عنصر يوتيوب تحتها
+          بيتغطى، لأن controls=0 أصلًا شايل كل عناصر التحكم من يوتيوب،
+          فمفيش حاجة نخفيها؛ إحنا بس بنمسك الضغطة عشان نشغّل/نوقّف بالـ API
+          الرسمي بدل ما نسيبها تروح لحاجة مش موجودة أصلًا. */}
       <button
         type="button"
         aria-label={isPlaying ? 'إيقاف' : 'تشغيل'}
@@ -230,6 +283,7 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
         onClick={() => { togglePlay(); resetHideTimer(); }}
       />
 
+      {/* زرار تشغيل كبير في النص لما الفيديو واقف */}
       {ready && !isPlaying && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <div className="w-16 h-16 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
@@ -238,6 +292,7 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
         </div>
       )}
 
+      {/* شريط التحكم المخصّص بينا — بديل شريط يوتيوب اللي اتشال بـ controls=0 */}
       <div
         className={`absolute bottom-0 inset-x-0 px-3 sm:px-4 pb-2.5 pt-8 bg-gradient-to-t from-black/85 via-black/40 to-transparent transition-opacity duration-300 z-20 ${showBar ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       >
@@ -281,6 +336,7 @@ function YouTubePlayer({ videoUrl, lessonId, onProgress }) {
   );
 }
 
+// ── Direct video player ───────────────────────────────────────────────────────
 function DirectVideoPlayer({ videoUrl, lessonId, onProgress }) {
   const containerRef = useRef(null);
   const videoRef  = useRef(null);
@@ -308,6 +364,7 @@ function DirectVideoPlayer({ videoUrl, lessonId, onProgress }) {
     return () => { clearInterval(interval.current); v.removeEventListener('play',onPlay); v.removeEventListener('pause',onPause); v.removeEventListener('ended',onEnded); };
   }, [lessonId, send]);
 
+  // تفعيل وضع Landscape تلقائيًا عند دخول ملء الشاشة على الموبايل (لو مدعوم)
   useEffect(() => attachLandscapeOnFullscreen(containerRef.current), []);
 
   return (
@@ -317,10 +374,13 @@ function DirectVideoPlayer({ videoUrl, lessonId, onProgress }) {
         src={videoUrl}
         controls
         preload="metadata"
+        // nodownload: يشيل زرار التحميل من شريط التحكم (لو المتصفح بيدعمه).
+        // noremoteplayback: يشيل زرار الـ Cast (مشاركة على شاشة تانية).
+        // disablePictureInPicture: يمنع فصل الفيديو في نافذة عائمة مستقلة.
         controlsList="nodownload noremoteplayback"
         disablePictureInPicture
-        onContextMenu={(e) => e.preventDefault()}
-        onDragStart={(e) => e.preventDefault()}
+        onContextMenu={(e) => e.preventDefault()} // يمنع "حفظ الفيديو باسم..." من كليك يمين
+        onDragStart={(e) => e.preventDefault()}   // يمنع سحب الفيديو لسطح المكتب لحفظه
         className="w-full rounded-2xl bg-black shadow-lg border border-slate-200/80 dark:border-slate-800/80"
         style={{maxHeight:'460px'}}
       />
@@ -328,6 +388,15 @@ function DirectVideoPlayer({ videoUrl, lessonId, onProgress }) {
   );
 }
 
+// ── PDF Viewer — opens inline inside platform ─────────────────────────────────
+// ── PDF Viewer — fullscreen in-app viewer, NO download option ────────────────
+// BUGFIX: previously rendered via a Google Docs Viewer iframe
+// (docs.google.com/viewer?url=...), which is a third-party service that
+// frequently fails to load PDFs from external hosts (Cloudinary URLs
+// included) — this is the real cause of "PDF doesn't open" for students.
+// Now uses the app's own PDFViewer (pdf.js canvas renderer) — no external
+// dependency, no download option, works with Arabic file names since only
+// the URL matters (the Arabic name is just a display label).
 function PdfViewer({ url, name }) {
   const [open, setOpen] = useState(false);
 
@@ -350,6 +419,7 @@ function PdfViewer({ url, name }) {
         </CardContent>
       </Card>
 
+      {/* Fullscreen in-app viewer modal */}
       {open && (
         <div className="fixed inset-0 z-[60] bg-slate-950 flex flex-col antialiased">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md shrink-0">
@@ -367,6 +437,9 @@ function PdfViewer({ url, name }) {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// LESSON DETAIL — shows all items in order
+// ══════════════════════════════════════════════════════════════════════════════
 function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
   const [lesson,   setLesson]   = useState(initLesson);
   const [loading,  setLoading]  = useState(!initLesson.items);
@@ -374,6 +447,7 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
   const [completed,setCompleted]= useState(watchLog?.completed || false);
 
   useEffect(() => {
+    // Get full lesson details
     api.get(`/student/lessons/${initLesson._id}`)
        .then(r => { setLesson(r.data.data.lesson || initLesson); setLoading(false); })
        .catch(() => { setLesson(initLesson); setLoading(false); });
@@ -389,12 +463,14 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
 
   const sortedItems = [...(lesson.items || [])].sort((a,b) => a.order - b.order);
 
+  // If old lesson with videoUrl but no items, show the video directly
   const hasLegacyVideo = !sortedItems.length && (lesson.videoUrl || initLesson.videoUrl);
   const legacyVideoUrl = lesson.videoUrl || initLesson.videoUrl;
   const isYT          = extractYouTubeId(legacyVideoUrl);
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-slate-950 flex flex-col antialiased transition-colors duration-300">
+      {/* Header */}
       <div className="border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 sm:px-6 py-4 flex items-center gap-4 shrink-0">
         <Button variant="ghost" size="icon" className="shrink-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all" onClick={onBack}>
           <ChevronLeft className="h-5 w-5 rtl:rotate-180 text-slate-700 dark:text-slate-300"/>
@@ -409,7 +485,9 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
         </div>
       </div>
 
+      {/* Content */}
       <div className="flex-1 overflow-y-auto relative">
+        {/* Math Grid Accent in Background */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.03)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,rgba(99,102,241,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(99,102,241,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)] pointer-events-none z-0" />
 
         <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-8 pb-16 relative z-10">
@@ -421,6 +499,7 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
               </div>
             </div>
           ) : hasLegacyVideo ? (
+            /* Legacy single-video lesson */
             <div className="space-y-4">
               {isYT
                 ? <YouTubePlayer videoUrl={legacyVideoUrl} lessonId={lesson._id} onProgress={handleProgress}/>
@@ -442,12 +521,13 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
           ) : (
             sortedItems.map((item, idx) => (
               <div key={item._id} className="space-y-4">
+                {/* Video item */}
                 {item.type === 'video' && (
                   <div className="space-y-3">
                     {extractYouTubeId(item.videoUrl)
                       ? <YouTubePlayer videoUrl={item.videoUrl} lessonId={lesson._id} onProgress={handleProgress}/>
                       : <DirectVideoPlayer videoUrl={item.videoUrl} lessonId={lesson._id} onProgress={handleProgress}/>}
-
+                    
                     <div className="flex items-center justify-between flex-wrap gap-3">
                       {item.duration && (
                         <p className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
@@ -467,6 +547,7 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
                   </div>
                 )}
 
+                {/* Image item */}
                 {item.type === 'image' && (
                   <figure className="space-y-3 p-2 bg-white dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl overflow-hidden shadow-sm">
                     <img src={item.imageUrl} alt={item.imageCaption||''} loading="lazy" className="w-full rounded-2xl border border-slate-100 dark:border-slate-850 object-contain bg-slate-950/5 dark:bg-slate-950/40 max-h-[500px]"/>
@@ -478,10 +559,12 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
                   </figure>
                 )}
 
+                {/* PDF item — inline viewer */}
                 {item.type === 'pdf' && (
                   <PdfViewer url={item.pdfUrl} name={item.pdfName}/>
                 )}
 
+                {/* Article item */}
                 {item.type === 'article' && (
                   <div className="bg-white/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm relative overflow-hidden group">
                     <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-indigo-500/60 rounded-full" />
@@ -494,6 +577,7 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
                   </div>
                 )}
 
+                {/* Divider between items */}
                 {idx < sortedItems.length - 1 && <hr className="border-slate-200 dark:border-slate-800/60 my-6"/>}
               </div>
             ))
@@ -504,11 +588,15 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// MAIN PAGE
+// ══════════════════════════════════════════════════════════════════════════════
 export default function StudentOnlinePage() {
   const { user } = useAuth();
   const [lessons,  setLessons]  = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const [watching, setWatching] = useState(null);
+  const [watching, setWatching] = useState(null); // { lesson, watchLog }
+  // صورة المدرس تُستخدم كـ Poster تلقائي لأي فيديو مالوش صورة خاصة به
   const [teacherAvatar, setTeacherAvatar] = useState(null);
 
   const load = useCallback(async () => {
@@ -545,13 +633,16 @@ export default function StudentOnlinePage() {
     <>
       <Helmet><title>أون لاين | منصة الطالب</title></Helmet>
       <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 antialiased font-sans overflow-hidden">
-
+        
+        {/* Coordinate vector background */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.04)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)] pointer-events-none z-0" />
-
+        
         <div className="relative p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 z-10">
-
+          
+          {/* Header Card */}
           <div className="relative overflow-hidden bg-gradient-to-l from-indigo-500/10 via-indigo-500/5 to-transparent dark:from-indigo-600/15 dark:via-indigo-600/5 dark:to-transparent border border-slate-200/80 dark:border-indigo-500/20 rounded-3xl p-6 shadow-sm backdrop-blur-md group max-w-3xl mx-auto">
-
+            
+            {/* Background design graphics */}
             <svg className="absolute left-0 bottom-0 top-0 h-full w-1/4 opacity-10 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
               <path d="M 0,0 C 50,50 50,100 100,100" stroke="currentColor" strokeWidth="0.5" fill="none" />
               <line x1="0" y1="50" x2="100" y2="50" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" />
@@ -565,7 +656,7 @@ export default function StudentOnlinePage() {
                   <span>{YEAR_LABELS[user?.academicYear]||'منصة الإبداع'}</span>
                 </div>
               </div>
-
+              
               {!loading && lessons.length > 0 && (
                 <div className="text-center bg-white/70 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-3 shadow-inner min-w-[90px]">
                   <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">{completedCount}/{lessons.length}</p>
@@ -602,124 +693,104 @@ export default function StudentOnlinePage() {
                 const pct   = log?.watchPercentage || 0;
                 const done  = log?.completed || false;
                 const items = lesson.items || [];
+                // Count content types
                 const types = [...new Set(items.map(i=>i.type))];
-                const typeMeta = {
-                  video:   { label:'فيديو', Icon: MonitorPlay },
-                  image:   { label:'صورة',  Icon: Image },
-                  pdf:     { label:'ملف',   Icon: FileText },
-                  article: { label:'شرح',   Icon: AlignLeft },
-                };
+                const typeIcons = { video:'📹 فيديو', image:'🖼 صورة', pdf:'📄 ملف', article:'📝 شرح' };
 
+                // Poster: صورة مخصصة للدرس (thumbnailUrl) أو صورة المدرس تلقائياً كبديل
                 const posterSrc = lesson.thumbnailUrl || teacherAvatar || null;
 
                 return (
                   <Card
                     key={lesson._id}
-                    className={`group relative border border-slate-200/70 dark:border-slate-800/70 bg-white dark:bg-slate-900 rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1 hover:border-indigo-400/40 dark:hover:border-indigo-500/40 active:scale-[0.99] ${done?'ring-1 ring-emerald-400/50 dark:ring-emerald-500/30':''}`}
+                    className={`group relative border border-slate-200/70 dark:border-slate-800/70 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-0.5 hover:border-indigo-400/40 dark:hover:border-indigo-500/40 active:scale-[0.99] ${done?'ring-1 ring-emerald-400/50 dark:ring-emerald-500/30':''}`}
                     onClick={() => setWatching({ lesson, watchLog: log })}
                   >
                     <CardContent className="p-0">
-                      {/* الصورة + الوحدة + العنوان + الحالة — Composition واحدة */}
+                      {/* Watch progression indicator line */}
+                      <div className={`h-1 transition-all duration-300 ${done?'bg-emerald-500':pct>0?'bg-indigo-600':'bg-slate-200 dark:bg-slate-800'}`} style={{width:done?'100%':`${pct}%`}}/>
+
+                      {/* Poster / Thumbnail — تصميم Premium بمعلومات Overlay */}
                       <div className="relative w-full aspect-video bg-slate-900 overflow-hidden">
                         {posterSrc ? (
                           <img
                             src={posterSrc}
                             alt={lesson.title}
                             loading="lazy"
-                            decoding="async"
                             className="w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950">
-                            <Film className="h-10 w-10 text-white/20" strokeWidth={1.5}/>
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950">
+                            <Film className="h-10 w-10 text-white/25"/>
                           </div>
                         )}
 
-                        {/* تدرّج يضمن قراءة النص فوق الصورة من غير ما يطفي الصورة نفسها */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent pointer-events-none"/>
-                        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/45 to-transparent pointer-events-none"/>
-                        <div className="absolute inset-0 ring-1 ring-inset ring-white/10 pointer-events-none"/>
+                        {/* Gradient ثابت لضمان وضوح النص فوق الصورة */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/5 pointer-events-none"/>
 
-                        {/* رقم الدرس (تسلسل المنهج) + حالة الإنجاز */}
-                        <div className="absolute top-3 inset-x-3 flex items-start justify-between gap-2">
-                          <span className="flex items-center justify-center h-7 min-w-[1.75rem] px-2 rounded-lg bg-black/45 backdrop-blur-md text-white text-xs font-bold ring-1 ring-white/15 shadow-sm">
+                        {/* شريط علوي: رقم الدرس + شارة الحالة */}
+                        <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center justify-center h-6 min-w-[1.5rem] px-1.5 rounded-full bg-black/45 backdrop-blur-sm text-white text-[11px] font-bold border border-white/10 shadow-sm">
                             {idx+1}
                           </span>
                           {done ? (
-                            <span className="flex items-center gap-1 h-7 px-2.5 rounded-lg bg-emerald-500 text-white text-[11px] font-bold shadow-sm shrink-0">
-                              <CheckCircle2 className="h-3.5 w-3.5"/> مكتمل
-                            </span>
+                            <Badge className="bg-emerald-500/95 text-white border-0 text-[10px] font-bold shadow-sm">✓ مكتمل</Badge>
                           ) : pct > 0 ? (
-                            <span className="flex items-center h-7 px-2.5 rounded-lg bg-black/45 backdrop-blur-md text-white text-[11px] font-bold ring-1 ring-white/15 shrink-0">
-                              {Math.round(pct)}٪ مشاهدة
-                            </span>
+                            <Badge className="bg-indigo-600/95 text-white border-0 text-[10px] font-bold shadow-sm">{Math.round(pct)}%</Badge>
                           ) : null}
                         </div>
 
-                        {/* صورة المدرس — ظاهرة بوضوح كشارة دائرية، مش مستخبية */}
-                        {teacherAvatar && (
-                          <img
-                            src={teacherAvatar}
-                            alt="صورة المدرس"
-                            className="absolute top-12 right-3 h-10 w-10 rounded-full object-cover ring-2 ring-white/85 shadow-[0_2px_10px_rgba(0,0,0,0.45)]"
-                          />
-                        )}
-
                         {/* زر التشغيل المركزي */}
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-[0_8px_28px_rgba(0,0,0,0.4)] backdrop-blur-md ring-1 ring-white/40 transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500/95':'bg-white/95'}`}>
+                          <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500/95':'bg-white/90'}`}>
                             {done
-                              ? <CheckCircle2 className="h-7 w-7 sm:h-8 sm:w-8 text-white"/>
-                              : <Play className="h-6 w-6 sm:h-7 sm:w-7 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
+                              ? <CheckCircle2 className="h-7 w-7 text-white"/>
+                              : <Play className="h-6 w-6 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
                           </div>
                         </div>
 
-                        {/* الوحدة + عنوان الدرس — جزء أصلي من تكوين الصورة */}
-                        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 space-y-1">
-                          {(lesson.unit || lesson.branch) && (
-                            <p className="text-[13px] sm:text-sm font-bold text-indigo-200 truncate [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
-                              {lesson.unit}
-                              {lesson.unit && lesson.branch && <span className="mx-1.5 text-indigo-300/50">·</span>}
-                              {lesson.branch}
+                        {/* عنوان الدرس + الفرع/الوحدة Overlay على الصورة */}
+                        <div className="absolute inset-x-0 bottom-0 p-3.5 space-y-1.5">
+                          <p className="font-extrabold text-white text-sm sm:text-base leading-snug line-clamp-2 [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
+                            {lesson.title}
+                          </p>
+                          {(lesson.branch || lesson.unit) && (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {lesson.branch && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white backdrop-blur-sm border border-white/15">
+                                  {lesson.branch}
+                                </span>
+                              )}
+                              {lesson.unit && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white backdrop-blur-sm border border-white/15">
+                                  {lesson.unit}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* شريط سفلي مختصر: الوصف + أنواع المحتوى */}
+                      <div className="p-3.5 flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          {lesson.description && (
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
+                              {lesson.description}
                             </p>
                           )}
-                          <h3 className="font-extrabold text-white text-[17px] sm:text-xl leading-[1.45] tracking-tight line-clamp-2 [text-shadow:0_2px_14px_rgba(0,0,0,0.85)]">
-                            {lesson.title}
-                          </h3>
+                          {types.length > 0 && (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {types.map(t => (
+                                <span key={t} className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200/50 dark:border-slate-750/30">
+                                  {typeIcons[t] || t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
+                        <ChevronLeft className="h-5 w-5 text-slate-400 dark:text-slate-650 shrink-0 group-hover:translate-x-[-2px] transition-transform duration-300"/>
                       </div>
-
-                      {/* شريط تقدّم رفيع يفصل الصورة عن باقي بيانات الكارت */}
-                      <div className="h-1 bg-slate-100 dark:bg-slate-800">
-                        <div className={`h-full transition-all duration-500 ${done?'bg-emerald-500':'bg-indigo-600'}`} style={{width: done ? '100%' : `${pct}%`}}/>
-                      </div>
-
-                      {/* الوصف + أنواع المحتوى */}
-                      {(lesson.description || types.length > 0) && (
-                        <div className="p-4 sm:p-5 flex items-center justify-between gap-3">
-                          <div className="min-w-0 flex-1 space-y-2">
-                            {lesson.description && (
-                              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
-                                {lesson.description}
-                              </p>
-                            )}
-                            {types.length > 0 && (
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {types.map(t => {
-                                  const meta = typeMeta[t];
-                                  const TypeIcon = meta?.Icon || MonitorPlay;
-                                  return (
-                                    <span key={t} className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg">
-                                      <TypeIcon className="h-3 w-3"/> {meta?.label || t}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                          <ChevronLeft className="h-5 w-5 text-slate-300 dark:text-slate-650 shrink-0 group-hover:translate-x-[-3px] group-hover:text-indigo-500 transition-all duration-300"/>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 );
