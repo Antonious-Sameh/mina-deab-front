@@ -697,10 +697,8 @@ export default function StudentOnlinePage() {
                 const types = [...new Set(items.map(i=>i.type))];
                 const typeIcons = { video:'📹 فيديو', image:'🖼 صورة', pdf:'📄 ملف', article:'📝 شرح' };
 
-                // Poster: صورة الدرس المخصصة (thumbnailUrl) فقط — صورة المدرس بقت
-                // عنصر Avatar منفصل وبارز جوه الكارد (مش خلفية) عشان تبان واضحة
-                // وما تتقصش بشكل سيء زي ما كانت بتحصل قبل كده كـ cover كامل
-                const posterSrc = lesson.thumbnailUrl || null;
+                // Poster: صورة مخصصة للدرس (thumbnailUrl) أو صورة المدرس تلقائياً كبديل
+                const posterSrc = lesson.thumbnailUrl || teacherAvatar || null;
 
                 return (
                   <Card
@@ -729,7 +727,7 @@ export default function StudentOnlinePage() {
                         )}
 
                         {/* Gradient متعدد الطبقات لضمان وضوح النص فوق الصورة وإحساس Cinematic فاخر */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/30 to-transparent pointer-events-none"/>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/25 to-transparent pointer-events-none"/>
                         <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent pointer-events-none"/>
                         {/* إطار زجاجي رفيع داخلي — يفصل الصورة بأناقة عن باقي الكارت */}
                         <div className="absolute inset-0 ring-1 ring-inset ring-white/10 pointer-events-none"/>
@@ -755,30 +753,17 @@ export default function StudentOnlinePage() {
                           </div>
                         </div>
 
-                        {/* صورة المدرس + عنوان الدرس + الوحدة — كله Overlay مدمج بأناقة أسفل
-                            الصورة نفسها. صورة المدرس بقت في صف مستقل بحجم واضح واحترافي
-                            (Ring نظيف + ظل)، والعنوان في سطره الكامل تحتها من غير أي تزاحم. */}
-                        <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-4 space-y-1.5">
-                          {(teacherAvatar || lesson.unit || lesson.branch) && (
-                            <div className="flex items-center gap-2">
-                              {teacherAvatar && (
-                                <img
-                                  src={teacherAvatar}
-                                  alt="المدرس"
-                                  loading="lazy"
-                                  className="w-9 h-9 sm:w-11 sm:h-11 rounded-full object-cover ring-2 ring-white/95 shadow-[0_3px_10px_rgba(0,0,0,0.45)] shrink-0"
-                                />
-                              )}
-                              {(lesson.unit || lesson.branch) && (
-                                <div className="min-w-0 flex items-center gap-1.5 text-[10.5px] sm:text-[11px] font-bold tracking-wide text-indigo-200">
-                                  <span className="h-1 w-1 rounded-full bg-indigo-400 shrink-0"/>
-                                  <span className="truncate [text-shadow:0_1px_4px_rgba(0,0,0,0.5)]">
-                                    {lesson.unit}
-                                    {lesson.unit && lesson.branch && <span className="mx-1.5 text-white/35">•</span>}
-                                    {lesson.branch}
-                                  </span>
-                                </div>
-                              )}
+                        {/* عنوان الدرس + الوحدة Overlay على الصورة — Typography هرمية واضحة:
+                            الوحدة كـ eyebrow صغير فوق العنوان، والعنوان هو أكبر عنصر ووزنه الأثقل */}
+                        <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-4 space-y-1">
+                          {(lesson.unit || lesson.branch) && (
+                            <div className="flex items-center gap-1.5 text-[10.5px] sm:text-[11px] font-bold tracking-wide text-indigo-200">
+                              <span className="h-1 w-1 rounded-full bg-indigo-400 shrink-0"/>
+                              <span className="truncate [text-shadow:0_1px_4px_rgba(0,0,0,0.5)]">
+                                {lesson.unit}
+                                {lesson.unit && lesson.branch && <span className="mx-1.5 text-white/35">•</span>}
+                                {lesson.branch}
+                              </span>
                             </div>
                           )}
                           <p className="font-extrabold text-white text-[15px] sm:text-lg leading-[1.35] tracking-tight line-clamp-2 [text-shadow:0_2px_10px_rgba(0,0,0,0.55)]">
@@ -789,7 +774,7 @@ export default function StudentOnlinePage() {
 
                       {/* شريط سفلي مختصر: الوصف + أنواع المحتوى */}
                       <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1 space-y-1">
+                        <div className="min-w-0 flex-1 space-y-1.5">
                           {lesson.description && (
                             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
                               {lesson.description}
