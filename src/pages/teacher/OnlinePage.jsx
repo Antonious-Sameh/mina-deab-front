@@ -535,7 +535,9 @@ function LessonDetail({ lesson: initLesson, onBack }) {
                 ? "Online"
                 : lesson.audienceType === "center"
                   ? "Center"
-                  : "كل الطلاب (قديم)"}
+                  : lesson.audienceType === "all"
+                    ? "كل الطلاب"
+                    : "كل الطلاب (قديم)"}
             </span>
             <span className="text-xs text-muted-foreground">
               {sortedItems.length} محتوى
@@ -976,10 +978,13 @@ function LessonModal({ lesson, onClose, onSaved }) {
               <SelectContent>
                 <SelectItem value="online">Online — أونلاين</SelectItem>
                 <SelectItem value="center">Center — سنتر</SelectItem>
+                <SelectItem value="all">كل الطلاب — Online و Center</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              هذا الفيديو هيظهر بس لطلاب النوع المحدد في نفس المرحلة الدراسية.
+              {audienceType === "all"
+                ? "هذا الفيديو هيظهر لكل طلاب المرحلة الدراسية، أونلاين وسنتر مع بعض."
+                : "هذا الفيديو هيظهر بس لطلاب النوع المحدد في نفس المرحلة الدراسية."}
             </p>
           </div>
           <div className="space-y-1.5">
@@ -1233,7 +1238,9 @@ export default function OnlinePage() {
                                 ? "Online"
                                 : lesson.audienceType === "center"
                                   ? "Center"
-                                  : "كل الطلاب"}
+                                  : lesson.audienceType === "all"
+                                    ? "كل الطلاب"
+                                    : "كل الطلاب (قديم)"}
                             </Badge>
                           </div>
                         </div>

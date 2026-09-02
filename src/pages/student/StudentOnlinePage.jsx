@@ -637,10 +637,10 @@ export default function StudentOnlinePage() {
         {/* Coordinate vector background */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.04)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)] pointer-events-none z-0" />
         
-        <div className="relative p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-6 z-10">
+        <div className="relative p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 z-10">
           
           {/* Header Card */}
-          <div className="relative overflow-hidden bg-gradient-to-l from-indigo-500/10 via-indigo-500/5 to-transparent dark:from-indigo-600/15 dark:via-indigo-600/5 dark:to-transparent border border-slate-200/80 dark:border-indigo-500/20 rounded-3xl p-6 shadow-sm backdrop-blur-md group">
+          <div className="relative overflow-hidden bg-gradient-to-l from-indigo-500/10 via-indigo-500/5 to-transparent dark:from-indigo-600/15 dark:via-indigo-600/5 dark:to-transparent border border-slate-200/80 dark:border-indigo-500/20 rounded-3xl p-6 shadow-sm backdrop-blur-md group max-w-3xl mx-auto">
             
             {/* Background design graphics */}
             <svg className="absolute left-0 bottom-0 top-0 h-full w-1/4 opacity-10 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -682,12 +682,12 @@ export default function StudentOnlinePage() {
               </div>
             </div>
           ) : lessons.length === 0 ? (
-            <div className="text-center py-20 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-white/40 dark:bg-slate-900/20 backdrop-blur-sm">
+            <div className="max-w-3xl mx-auto text-center py-20 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-white/40 dark:bg-slate-900/20 backdrop-blur-sm">
               <MonitorPlay className="h-12 w-12 text-slate-400 dark:text-slate-650 mx-auto mb-4 opacity-50"/>
               <p className="text-slate-500 dark:text-slate-400 font-bold">لا توجد دروس متاحة حالياً</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
               {lessons.map((lesson, idx) => {
                 const log   = lesson.watchLog;
                 const pct   = log?.watchPercentage || 0;
@@ -703,55 +703,82 @@ export default function StudentOnlinePage() {
                 return (
                   <Card
                     key={lesson._id}
-                    className={`border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-indigo-500/30 dark:hover:border-indigo-500/30 active:scale-[0.99] relative group ${done?'border-emerald-300/60 dark:border-emerald-950':''}`}
+                    className={`group relative border border-slate-200/70 dark:border-slate-800/70 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-0.5 hover:border-indigo-400/40 dark:hover:border-indigo-500/40 active:scale-[0.99] ${done?'ring-1 ring-emerald-400/50 dark:ring-emerald-500/30':''}`}
                     onClick={() => setWatching({ lesson, watchLog: log })}
                   >
                     <CardContent className="p-0">
                       {/* Watch progression indicator line */}
                       <div className={`h-1 transition-all duration-300 ${done?'bg-emerald-500':pct>0?'bg-indigo-600':'bg-slate-200 dark:bg-slate-800'}`} style={{width:done?'100%':`${pct}%`}}/>
 
-                      {/* Poster / Thumbnail — بنفس فكرة يوتيوب */}
+                      {/* Poster / Thumbnail — تصميم Premium بمعلومات Overlay */}
                       <div className="relative w-full aspect-video bg-slate-900 overflow-hidden">
                         {posterSrc ? (
-                          <img src={posterSrc} alt={lesson.title} loading="lazy" className="w-full h-full object-cover"/>
+                          <img
+                            src={posterSrc}
+                            alt={lesson.title}
+                            loading="lazy"
+                            className="w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
+                          />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900 to-slate-900">
-                            <Film className="h-10 w-10 text-white/30"/>
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950">
+                            <Film className="h-10 w-10 text-white/25"/>
                           </div>
                         )}
-                        {/* Dim overlay + play button */}
-                        <div className="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex items-center justify-center">
-                          <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500':'bg-white/90'}`}>
+
+                        {/* Gradient ثابت لضمان وضوح النص فوق الصورة */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/5 pointer-events-none"/>
+
+                        {/* شريط علوي: رقم الدرس + شارة الحالة */}
+                        <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center justify-center h-6 min-w-[1.5rem] px-1.5 rounded-full bg-black/45 backdrop-blur-sm text-white text-[11px] font-bold border border-white/10 shadow-sm">
+                            {idx+1}
+                          </span>
+                          {done ? (
+                            <Badge className="bg-emerald-500/95 text-white border-0 text-[10px] font-bold shadow-sm">✓ مكتمل</Badge>
+                          ) : pct > 0 ? (
+                            <Badge className="bg-indigo-600/95 text-white border-0 text-[10px] font-bold shadow-sm">{Math.round(pct)}%</Badge>
+                          ) : null}
+                        </div>
+
+                        {/* زر التشغيل المركزي */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500/95':'bg-white/90'}`}>
                             {done
                               ? <CheckCircle2 className="h-7 w-7 text-white"/>
                               : <Play className="h-6 w-6 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
                           </div>
                         </div>
-                        {done && (
-                          <Badge className="absolute top-2 left-2 bg-emerald-500 text-white border-0 text-[10px] font-bold">✓ مكتمل</Badge>
-                        )}
-                        {pct > 0 && !done && (
-                          <Badge className="absolute top-2 left-2 bg-indigo-600 text-white border-0 text-[10px] font-bold">{Math.round(pct)}%</Badge>
-                        )}
-                      </div>
 
-                      <div className="p-4 flex items-start justify-between gap-3">
-                        <div className="min-w-0 space-y-1.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500">{idx+1}.</span>
-                            <p className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base leading-snug">{lesson.title}</p>
-                          </div>
-
-                          {/* فرع / الوحدة */}
+                        {/* عنوان الدرس + الفرع/الوحدة Overlay على الصورة */}
+                        <div className="absolute inset-x-0 bottom-0 p-3.5 space-y-1.5">
+                          <p className="font-extrabold text-white text-sm sm:text-base leading-snug line-clamp-2 [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
+                            {lesson.title}
+                          </p>
                           {(lesson.branch || lesson.unit) && (
-                            <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
-                              {lesson.branch && <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 rounded border border-indigo-100 dark:border-indigo-900/30">{lesson.branch}</span>}
-                              {lesson.unit && <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200/50 dark:border-slate-750/30">{lesson.unit}</span>}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {lesson.branch && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white backdrop-blur-sm border border-white/15">
+                                  {lesson.branch}
+                                </span>
+                              )}
+                              {lesson.unit && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white backdrop-blur-sm border border-white/15">
+                                  {lesson.unit}
+                                </span>
+                              )}
                             </div>
                           )}
+                        </div>
+                      </div>
 
-                          {lesson.description && <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed">{lesson.description}</p>}
-
+                      {/* شريط سفلي مختصر: الوصف + أنواع المحتوى */}
+                      <div className="p-3.5 flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          {lesson.description && (
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
+                              {lesson.description}
+                            </p>
+                          )}
                           {types.length > 0 && (
                             <div className="flex items-center gap-1 flex-wrap">
                               {types.map(t => (
@@ -762,7 +789,7 @@ export default function StudentOnlinePage() {
                             </div>
                           )}
                         </div>
-                        <ChevronLeft className="h-5 w-5 text-slate-400 dark:text-slate-650 shrink-0 group-hover:translate-x-[-2px] transition-transform duration-300 mt-1"/>
+                        <ChevronLeft className="h-5 w-5 text-slate-400 dark:text-slate-650 shrink-0 group-hover:translate-x-[-2px] transition-transform duration-300"/>
                       </div>
                     </CardContent>
                   </Card>

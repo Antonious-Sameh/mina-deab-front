@@ -93,15 +93,17 @@ function ActionPopover({ student, onDone }) {
 // ── Leaderboard Row (memoized) ──────────────────────────────────────────────
 // Extracted from the inline .map() so React.memo can stop unrelated rows from
 // re-rendering every time the teacher opens/closes one student's action popover.
-const PointsLeaderboardRow = memo(function PointsLeaderboardRow({ s, idx, sid, isActive, onToggleActive, onDone }) {
+const PointsLeaderboardRow = memo(function PointsLeaderboardRow({ s, idx, sid, isActive, onToggleActive, onDone, sortBy }) {
   const bal   = s.balance;
-  const isTop = idx < 3 && bal > 0;
+  // شارات الميداليات معناها مرتبط بترتيب النقاط فقط — لما الترتيب يبقى أبجدي
+  // مفيش داعي نظهرها لأن أول 3 أسماء أبجدياً مش بالضرورة أصحاب أعلى نقاط.
+  const isTop = sortBy === 'points' && idx < 3 && bal > 0;
 
   return (
     <tr className={`hover:bg-muted/20 transition-colors ${
-      idx===0&&bal>0 ? 'bg-yellow-50/40' :
-      idx===1&&bal>0 ? 'bg-slate-50/30'  :
-      idx===2&&bal>0 ? 'bg-orange-50/30'  : ''
+      isTop&&idx===0 ? 'bg-yellow-50/40' :
+      isTop&&idx===1 ? 'bg-slate-50/30'  :
+      isTop&&idx===2 ? 'bg-orange-50/30'  : ''
     }`}>
       {/* Rank */}
       <td className="px-4 py-3 text-center">
@@ -159,6 +161,7 @@ export default function PointsPage() {
   const [loading,  setLoading]  = useState(false);
   const [search,   setSearch]   = useState('');
   const [active,   setActive]   = useState(null); // studentId with open popover
+  const [sortBy,   setSortBy]   = useState('points'); // 'points' | 'alpha'
 
   // Load groups when year changes
   useEffect(() => {
@@ -252,13 +255,17 @@ export default function PointsPage() {
       ...s,
       balance: balances[s._id?.toString()] ?? 0,
     }));
-    // Sort: highest balance first
-    withBalance.sort((a, b) => b.balance - a.balance);
+    // الترتيب: حسب النقاط (من الأعلى للأقل، شامل السالبة) أو أبجدياً بالاسم
+    if (sortBy === 'alpha') {
+      withBalance.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+    } else {
+      withBalance.sort((a, b) => b.balance - a.balance);
+    }
     if (!q) return withBalance;
     return withBalance.filter(s =>
       norm(s.name).includes(q) || (s.codePlain || '').includes(search.trim())
     );
-  }, [students, balances, search]);
+  }, [students, balances, search, sortBy]);
 
   const totalPoints  = Object.values(balances).reduce((s, b) => s + (b > 0 ? b : 0), 0);
   const withPoints   = filtered.filter(s => s.balance > 0).length;
@@ -345,9 +352,25 @@ export default function PointsPage() {
         {/* Students table */}
         {!loading && filtered.length > 0 && (
           <Card className="border shadow-sm overflow-hidden">
-            <div className="px-4 py-3 bg-muted/30 border-b flex items-center gap-2">
-              <ChevronDown className="h-4 w-4 text-muted-foreground"/>
-              <span className="text-sm font-semibold text-muted-foreground">مرتب من الأعلى نقاطاً إلى الأقل</span>
+            <div className="px-4 py-3 bg-muted/30 border-b flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0"/>
+                <span className="text-sm font-semibold text-muted-foreground shrink-0">ترتيب حسب:</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 w-full max-w-[220px]">
+                <button
+                  onClick={() => setSortBy('points')}
+                  className={`rounded-lg py-1 text-xs font-bold border-2 transition-all ${sortBy === 'points' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}
+                >
+                  النقاط ↓
+                </button>
+                <button
+                  onClick={() => setSortBy('alpha')}
+                  className={`rounded-lg py-1 text-xs font-bold border-2 transition-all ${sortBy === 'alpha' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}
+                >
+                  أبجدي أ-ي
+                </button>
+              </div>
               <Badge variant="secondary" className="mr-auto">{filtered.length} طالب</Badge>
             </div>
             <div className="overflow-x-auto">
@@ -373,6 +396,7 @@ export default function PointsPage() {
                         isActive={active === sid}
                         onToggleActive={onToggleActive}
                         onDone={handlePointDone}
+                        sortBy={sortBy}
                       />
                     );
                   })}
