@@ -711,7 +711,7 @@ export default function StudentOnlinePage() {
                       <div className={`h-1 transition-all duration-300 ${done?'bg-emerald-500':pct>0?'bg-indigo-600':'bg-slate-200 dark:bg-slate-800'}`} style={{width:done?'100%':`${pct}%`}}/>
 
                       {/* Poster / Thumbnail — تصميم Premium بمعلومات Overlay */}
-                      <div className="relative w-full aspect-video bg-slate-950 overflow-hidden">
+                      <div className="relative w-full aspect-video bg-slate-900 overflow-hidden">
                         {posterSrc ? (
                           <img
                             src={posterSrc}
@@ -720,34 +720,29 @@ export default function StudentOnlinePage() {
                             className="w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950">
-                            <Film className="h-10 w-10 text-white/20"/>
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950">
+                            <Film className="h-10 w-10 text-white/25"/>
                           </div>
                         )}
 
-                        {/* تدرّج لوني لضمان وضوح النص أسفل الكارت + تظليل خفيف أعلاه عشان الشارات تبان واضحة */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent pointer-events-none"/>
-                        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/45 to-transparent pointer-events-none"/>
+                        {/* Gradient ثابت لضمان وضوح النص فوق الصورة */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/5 pointer-events-none"/>
 
                         {/* شريط علوي: رقم الدرس + شارة الحالة */}
-                        <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center justify-center h-6 min-w-[1.5rem] px-1.5 rounded-md bg-white/10 backdrop-blur-md text-white/85 text-[11px] font-bold tabular-nums border border-white/10">
-                            {String(idx+1).padStart(2,'0')}
+                        <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center justify-center h-6 min-w-[1.5rem] px-1.5 rounded-full bg-black/45 backdrop-blur-sm text-white text-[11px] font-bold border border-white/10 shadow-sm">
+                            {idx+1}
                           </span>
                           {done ? (
-                            <span className="inline-flex items-center gap-1 h-6 px-2 rounded-md bg-emerald-500 text-white text-[10px] font-bold shadow-sm">
-                              <CheckCircle2 className="h-3 w-3"/> مكتمل
-                            </span>
+                            <Badge className="bg-emerald-500/95 text-white border-0 text-[10px] font-bold shadow-sm">✓ مكتمل</Badge>
                           ) : pct > 0 ? (
-                            <span className="inline-flex items-center h-6 px-2 rounded-md bg-white/15 backdrop-blur-md text-white text-[10px] font-bold border border-white/10">
-                              {Math.round(pct)}%
-                            </span>
+                            <Badge className="bg-indigo-600/95 text-white border-0 text-[10px] font-bold shadow-sm">{Math.round(pct)}%</Badge>
                           ) : null}
                         </div>
 
                         {/* زر التشغيل المركزي */}
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg ring-1 ring-white/20 backdrop-blur-sm transition-all duration-300 group-hover:scale-110 ${done?'bg-emerald-500':'bg-white/95'}`}>
+                          <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500/95':'bg-white/90'}`}>
                             {done
                               ? <CheckCircle2 className="h-7 w-7 text-white"/>
                               : <Play className="h-6 w-6 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
@@ -755,40 +750,46 @@ export default function StudentOnlinePage() {
                         </div>
 
                         {/* عنوان الدرس + الفرع/الوحدة Overlay على الصورة */}
-                        <div className="absolute inset-x-0 bottom-0 p-4 space-y-1">
-                          {(lesson.branch || lesson.unit) && (
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-200/90">
-                              {lesson.branch && <span>{lesson.branch}</span>}
-                              {lesson.branch && lesson.unit && <span className="text-indigo-200/40">•</span>}
-                              {lesson.unit && <span>{lesson.unit}</span>}
-                            </div>
-                          )}
-                          <p className="font-extrabold text-white text-base leading-snug line-clamp-2 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">
+                        <div className="absolute inset-x-0 bottom-0 p-3.5 space-y-1.5">
+                          <p className="font-extrabold text-white text-sm sm:text-base leading-snug line-clamp-2 [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
                             {lesson.title}
                           </p>
+                          {(lesson.branch || lesson.unit) && (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {lesson.branch && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white backdrop-blur-sm border border-white/15">
+                                  {lesson.branch}
+                                </span>
+                              )}
+                              {lesson.unit && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white backdrop-blur-sm border border-white/15">
+                                  {lesson.unit}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 
                       {/* شريط سفلي مختصر: الوصف + أنواع المحتوى */}
-                      <div className="px-4 py-3.5 flex items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800/60">
-                        <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="p-3.5 flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1">
                           {lesson.description && (
-                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
                               {lesson.description}
                             </p>
                           )}
                           {types.length > 0 && (
-                            <div className="flex items-center gap-2 flex-wrap text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                              {types.map((t, i) => (
-                                <span key={t} className="inline-flex items-center gap-2">
-                                  {i > 0 && <span className="text-slate-300 dark:text-slate-700">·</span>}
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {types.map(t => (
+                                <span key={t} className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200/50 dark:border-slate-750/30">
                                   {typeIcons[t] || t}
                                 </span>
                               ))}
                             </div>
                           )}
                         </div>
-                        <ChevronLeft className="h-5 w-5 text-slate-300 dark:text-slate-650 shrink-0 group-hover:-translate-x-1 transition-transform duration-300"/>
+                        <ChevronLeft className="h-5 w-5 text-slate-400 dark:text-slate-650 shrink-0 group-hover:translate-x-[-2px] transition-transform duration-300"/>
                       </div>
                     </CardContent>
                   </Card>
