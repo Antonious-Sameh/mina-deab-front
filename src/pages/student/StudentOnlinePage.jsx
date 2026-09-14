@@ -687,7 +687,11 @@ export default function StudentOnlinePage() {
               <p className="text-slate-500 dark:text-slate-400 font-bold">لا توجد دروس متاحة حالياً</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            /* ═══════════════════════════════════════════════════════════════════
+               PREMIUM LESSON CARD GRID
+               تعديل التصميم البصري فقط — صفر تغيير في المنطق أو البيانات
+               ═══════════════════════════════════════════════════════════════════ */
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {lessons.map((lesson, idx) => {
                 const log   = lesson.watchLog;
                 const pct   = log?.watchPercentage || 0;
@@ -700,102 +704,161 @@ export default function StudentOnlinePage() {
                 // Poster: صورة مخصصة للدرس (thumbnailUrl) أو صورة المدرس تلقائياً كبديل
                 const posterSrc = lesson.thumbnailUrl || teacherAvatar || null;
 
-                return (
-                  <Card
-                    key={lesson._id}
-                    className={`group relative border border-slate-200/70 dark:border-slate-800/70 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-0.5 hover:border-indigo-400/40 dark:hover:border-indigo-500/40 active:scale-[0.99] ${done?'ring-1 ring-emerald-400/50 dark:ring-emerald-500/30':''}`}
-                    onClick={() => setWatching({ lesson, watchLog: log })}
-                  >
-                    <CardContent className="p-0">
-                      {/* Watch progression indicator line */}
-                      <div className={`h-1 transition-all duration-300 ${done?'bg-emerald-500':pct>0?'bg-indigo-600':'bg-slate-200 dark:bg-slate-800'}`} style={{width:done?'100%':`${pct}%`}}/>
+                // ── حالة الكارت: تحدد لون الـ Glow والـ Border ──────────────
+                const cardStateClasses = done
+                  ? 'border-emerald-400/50 dark:border-emerald-500/30 hover:shadow-[0_12px_40px_rgba(16,185,129,0.25)] dark:hover:shadow-[0_12px_40px_rgba(16,185,129,0.18)]'
+                  : pct > 0
+                  ? 'border-indigo-400/40 dark:border-indigo-500/30 hover:shadow-[0_12px_40px_rgba(99,102,241,0.22)] dark:hover:shadow-[0_12px_40px_rgba(99,102,241,0.18)]'
+                  : 'border-slate-200/80 dark:border-slate-800/70 hover:border-indigo-400/35 dark:hover:border-indigo-500/30 hover:shadow-[0_12px_36px_rgba(99,102,241,0.15)] dark:hover:shadow-[0_12px_36px_rgba(99,102,241,0.12)]';
 
-                      {/* Poster / Thumbnail — تصميم Premium بمعلومات Overlay */}
-                      <div className="relative w-full aspect-video bg-slate-900 overflow-hidden">
-                        {posterSrc ? (
-                          <img
-                            src={posterSrc}
-                            alt={lesson.title}
-                            loading="lazy"
-                            className="w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950">
-                            <Film className="h-10 w-10 text-white/25"/>
+                return (
+                  <div
+                    key={lesson._id}
+                    onClick={() => setWatching({ lesson, watchLog: log })}
+                    className={`group relative flex flex-col rounded-[1.35rem] overflow-hidden cursor-pointer border bg-white dark:bg-slate-900 shadow-[0_2px_14px_rgba(0,0,0,0.07)] dark:shadow-[0_2px_20px_rgba(0,0,0,0.4)] transition-all duration-300 ease-out hover:-translate-y-1.5 active:scale-[0.983] active:translate-y-0 ${cardStateClasses}`}
+                  >
+
+                    {/* ── منطقة الـ Poster / Thumbnail ──────────────────────── */}
+                    <div className="relative w-full aspect-video overflow-hidden bg-slate-950 shrink-0">
+
+                      {posterSrc ? (
+                        <img
+                          src={posterSrc}
+                          alt={lesson.title}
+                          loading="lazy"
+                          className="w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.07]"
+                        />
+                      ) : (
+                        /* Placeholder: Gradient درامي + شبكة خفيفة */
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 via-indigo-950 to-slate-950">
+                          <div className="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.07)_1px,transparent_1px)] bg-[size:28px_28px]" />
+                          <Film className="h-12 w-12 text-white/20 relative z-10" />
+                        </div>
+                      )}
+
+                      {/* Gradient ثابت للـ Overlay: من الأسفل قوي، من الأعلى خفيف */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/5 to-black/82 pointer-events-none" />
+
+                      {/* ── شريط علوي: رقم الدرس (يسار RTL) + شارة الحالة (يمين RTL) ── */}
+                      <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2 z-10">
+
+                        {/* رقم الدرس — Frosted Glass pill */}
+                        <span className="inline-flex items-center justify-center h-7 min-w-[1.75rem] px-2.5 rounded-full bg-black/45 backdrop-blur-md border border-white/15 text-white text-[11px] font-black tracking-wide shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
+                          {idx + 1}
+                        </span>
+
+                        {/* شارة الحالة */}
+                        {done ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold tracking-wide border border-emerald-400/50 shadow-[0_0_14px_rgba(16,185,129,0.6)]">
+                            <CheckCircle2 className="h-3 w-3 shrink-0" />
+                            مكتمل
+                          </span>
+                        ) : pct > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-bold border border-indigo-400/40 shadow-[0_0_12px_rgba(99,102,241,0.5)]">
+                            <BarChart2 className="h-3 w-3 shrink-0" />
+                            {Math.round(pct)}%
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {/* ── زرار التشغيل المركزي ─────────────────────────────── */}
+                      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                        {/* الحلقة الخارجية (Ring) تظهر عند Hover */}
+                        <div className={`
+                          absolute w-[4.5rem] h-[4.5rem] rounded-full border-2
+                          opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-110
+                          transition-all duration-300 ease-out
+                          ${done ? 'border-emerald-400/50' : 'border-white/30'}
+                        `} />
+                        {/* الزرار نفسه */}
+                        <div className={`
+                          relative flex items-center justify-center
+                          w-14 h-14 rounded-full
+                          transition-transform duration-300 ease-out group-hover:scale-110
+                          ${done
+                            ? 'bg-emerald-500 shadow-[0_4px_20px_rgba(16,185,129,0.5)]'
+                            : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.4)]'
+                          }
+                        `}>
+                          {done
+                            ? <CheckCircle2 className="h-6 w-6 text-white" strokeWidth={2.5} />
+                            : <Play className="h-6 w-6 fill-indigo-600 text-indigo-600 translate-x-[2px] rtl:-translate-x-[2px]" />
+                          }
+                        </div>
+                      </div>
+
+                      {/* ── عنوان الدرس + الفرع/الوحدة — Overlay سفلي ─────── */}
+                      <div className="absolute inset-x-0 bottom-0 px-3.5 pb-3.5 pt-8 space-y-2 z-10">
+                        <p className="font-extrabold text-white leading-snug line-clamp-2 text-sm sm:text-[0.95rem] tracking-[-0.01em] [text-shadow:0_1px_10px_rgba(0,0,0,0.65)]">
+                          {lesson.title}
+                        </p>
+                        {(lesson.branch || lesson.unit) && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {lesson.branch && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/12 backdrop-blur-sm text-white/90 border border-white/15">
+                                {lesson.branch}
+                              </span>
+                            )}
+                            {lesson.unit && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/12 backdrop-blur-sm text-white/90 border border-white/15">
+                                {lesson.unit}
+                              </span>
+                            )}
                           </div>
                         )}
+                      </div>
+                    </div>{/* /Poster area */}
 
-                        {/* Gradient ثابت لضمان وضوح النص فوق الصورة */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/5 pointer-events-none"/>
+                    {/* ── شريط التقدم (Progress Bar) — أسفل الـ Poster مباشرةً ── */}
+                    <div className="h-[3px] w-full bg-slate-100 dark:bg-slate-800 shrink-0 overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-500 ${
+                          done
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_6px_rgba(16,185,129,0.7)]'
+                            : pct > 0
+                            ? 'bg-gradient-to-r from-indigo-500 to-violet-500'
+                            : 'w-0'
+                        }`}
+                        style={{ width: done ? '100%' : `${pct}%` }}
+                      />
+                    </div>
 
-                        {/* شريط علوي: رقم الدرس + شارة الحالة */}
-                        <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center justify-center h-6 min-w-[1.5rem] px-1.5 rounded-full bg-black/45 backdrop-blur-sm text-white text-[11px] font-bold border border-white/10 shadow-sm">
-                            {idx+1}
-                          </span>
-                          {done ? (
-                            <Badge className="bg-emerald-500/95 text-white border-0 text-[10px] font-bold shadow-sm">✓ مكتمل</Badge>
-                          ) : pct > 0 ? (
-                            <Badge className="bg-indigo-600/95 text-white border-0 text-[10px] font-bold shadow-sm">{Math.round(pct)}%</Badge>
-                          ) : null}
-                        </div>
+                    {/* ── الجزء السفلي: الوصف + أنواع المحتوى ──────────────── */}
+                    <div className="flex items-start justify-between gap-3 px-4 py-3.5 flex-1">
+                      <div className="min-w-0 flex-1 space-y-2">
 
-                        {/* زر التشغيل المركزي */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 ${done?'bg-emerald-500/95':'bg-white/90'}`}>
-                            {done
-                              ? <CheckCircle2 className="h-7 w-7 text-white"/>
-                              : <Play className="h-6 w-6 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
-                          </div>
-                        </div>
-
-                        {/* عنوان الدرس + الفرع/الوحدة Overlay على الصورة */}
-                        <div className="absolute inset-x-0 bottom-0 p-3.5 space-y-1.5">
-                          <p className="font-extrabold text-white text-sm sm:text-base leading-snug line-clamp-2 [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
-                            {lesson.title}
+                        {/* الوصف */}
+                        {lesson.description && (
+                          <p className="text-[11.5px] font-medium leading-relaxed line-clamp-2 text-slate-500 dark:text-slate-400">
+                            {lesson.description}
                           </p>
-                          {(lesson.branch || lesson.unit) && (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {lesson.branch && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white backdrop-blur-sm border border-white/15">
-                                  {lesson.branch}
-                                </span>
-                              )}
-                              {lesson.unit && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white backdrop-blur-sm border border-white/15">
-                                  {lesson.unit}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                        )}
+
+                        {/* أنواع المحتوى */}
+                        {types.length > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {types.map(t => (
+                              <span
+                                key={t}
+                                className="text-[10px] font-bold px-2 py-[3px] rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60 leading-none"
+                              >
+                                {typeIcons[t] || t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
-                      {/* شريط سفلي مختصر: الوصف + أنواع المحتوى */}
-                      <div className="p-3.5 flex items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1 space-y-1">
-                          {lesson.description && (
-                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
-                              {lesson.description}
-                            </p>
-                          )}
-                          {types.length > 0 && (
-                            <div className="flex items-center gap-1 flex-wrap">
-                              {types.map(t => (
-                                <span key={t} className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200/50 dark:border-slate-750/30">
-                                  {typeIcons[t] || t}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <ChevronLeft className="h-5 w-5 text-slate-400 dark:text-slate-650 shrink-0 group-hover:translate-x-[-2px] transition-transform duration-300"/>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      {/* سهم RTL */}
+                      <ChevronLeft className="h-[18px] w-[18px] text-slate-400 dark:text-slate-600 shrink-0 mt-0.5 transition-transform duration-300 group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" />
+                    </div>
+
+                  </div>
                 );
               })}
             </div>
+            /* ══ نهاية PREMIUM LESSON CARD GRID ══ */
+
           )}
         </div>
       </div>
