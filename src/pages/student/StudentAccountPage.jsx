@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge }  from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import PasskeyToggle from '@/components/PasskeyToggle';
 
 const YEAR_LABELS = {
   'first-prep':'الصف الأول الإعدادي','second-prep':'الصف الثاني الإعدادي',
@@ -58,6 +59,8 @@ export default function StudentAccountPage() {
           <InfoRow icon={Phone}         label="رقم الهاتف"       value={user?.phone} />
           <InfoRow icon={Phone}         label="هاتف ولي الأمر"   value={user?.parentPhone} />
         </div>
+
+        <PasskeyToggle />
 
         <Button variant="destructive" className="w-full gap-2" onClick={handleLogout}>
           <LogOut className="h-4 w-4" /> تسجيل الخروج

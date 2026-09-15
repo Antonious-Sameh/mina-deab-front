@@ -20,6 +20,20 @@ export const authAPI = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+// PASSKEY (WebAuthn) — دخول اختياري بالبصمة، إضافي بالكامل فوق authAPI أعلاه.
+// كل نداء هنا بيبعت نفس الـ deviceId المستخدم في تسجيل الدخول العادي، عشان
+// السيرفر يقدر يتأكد إن الجهاز ده لسه مربوط بالحساب (للطالب فقط).
+// ══════════════════════════════════════════════════════════════════════════════
+export const passkeyAPI = {
+  registerOptions: ()         => api.post('/auth/passkey/register/options', { deviceId: getDeviceId() }).then(getData),
+  registerVerify:  (response) => api.post('/auth/passkey/register/verify',  { deviceId: getDeviceId(), response }).then(getData),
+  loginOptions:    ()         => api.post('/auth/passkey/login/options').then(getData),
+  loginVerify:     (response) => api.post('/auth/passkey/login/verify',     { response }).then(getData),
+  status:          ()         => api.get('/auth/passkey/status', { params: { deviceId: getDeviceId() } }).then(getData),
+  removeMine:      ()         => api.delete('/auth/passkey/mine', { data: { deviceId: getDeviceId() } }).then(getData),
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // STUDENTS (teacher)
 // ══════════════════════════════════════════════════════════════════════════════
 export const studentsAPI = {

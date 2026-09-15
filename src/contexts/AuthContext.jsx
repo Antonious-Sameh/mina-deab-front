@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { authAPI } from '@/api/services';
+import { loginWithPasskey as loginWithPasskeyRequest } from '@/lib/passkey';
 import { setAccessToken, clearAccessToken, refreshAccessToken } from '@/api/axios';
 import { safeLocalStorage, safeSessionStorage } from '@/lib/safe-storage';
 
@@ -198,6 +199,25 @@ export function AuthProvider({ children }) {
     return demoUser;
   }, [scheduleRefresh, persistUser]);
 
+  // ── Login بالبصمة (Passkey) ─────────────────────────────────────────────
+  // اختياري وإضافي بالكامل فوق login() أعلاه — بنفس تسلسل النجاح بالظبط
+  // (نفس التوكنز، نفس الـ cookies، نفس تحديث حالة المستخدم)، من غير أي
+  // نظام جلسة موازٍ. بترجع { ok:true, user } عند النجاح، أو
+  // { ok:false, reason, message } عند أي فشل (بما فيه "المستخدم لغى
+  // الطلب" أو "الجهاز مش بيدعم") — أبداً مبترميش استثناء يكسر صفحة الدخول.
+  const loginWithPasskey = useCallback(async () => {
+    const result = await loginWithPasskeyRequest();
+    if (!result.ok) return result;
+
+    const { accessToken, user: loggedInUser } = result.data;
+    setAccessToken(accessToken);
+    setUser(loggedInUser);
+    persistUser(loggedInUser);
+    setMode('backend');
+    scheduleRefresh();
+    return { ok: true, user: loggedInUser };
+  }, [scheduleRefresh, persistUser]);
+
   // ── Logout ────────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
@@ -221,8 +241,8 @@ export function AuthProvider({ children }) {
   }, [persistUser]);
 
   const contextValue = useMemo(
-    () => ({ user, login, logout, loading, isAuthenticated: !!user, mode, updateUser }),
-    [user, login, logout, loading, mode, updateUser]
+    () => ({ user, login, loginWithPasskey, logout, loading, isAuthenticated: !!user, mode, updateUser }),
+    [user, login, loginWithPasskey, logout, loading, mode, updateUser]
   );
 
   return (

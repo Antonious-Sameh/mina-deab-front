@@ -1,23 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'; // Preserved core icon utilities
+import { ArrowLeft, Eye, EyeOff, Fingerprint } from 'lucide-react'; // Preserved core icon utilities
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { toast } from 'sonner';
+import { isPasskeySupported } from '@/lib/passkey';
 
 export default function LoginPage() {
   // --- الحفاظ على اللوجيك الأصلي تماماً بدون أي تغيير ---
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [showCode, setShowCode] = useState(false);
-  
-  const { login } = useAuth();
+
+  // ── الدخول بالبصمة — اختياري وإضافي بالكامل، صامت تمامًا لو المتصفح
+  // مش بيدعم WebAuthn (الزرار مبيظهرش خالص، والدخول العادي فوق فاضل زي ما هو).
+  const [passkeySupported, setPasskeySupported] = useState(false);
+  const [passkeyLoading,   setPasskeyLoading]   = useState(false);
+
+  const { login, loginWithPasskey } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => { setPasskeySupported(isPasskeySupported()); }, []);
+
+  const goAfterLogin = (loggedInUser) => {
+    const from = location.state?.from?.pathname;
+    if (from && from !== '/') {
+      navigate(from, { replace: true });
+    } else {
+      navigate(loggedInUser.role === 'teacher' ? '/teacher/home' : '/student/home', { replace: true });
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    setPasskeyLoading(true);
+    const result = await loginWithPasskey();
+    setPasskeyLoading(false);
+    if (result.ok) {
+      toast.success(`مرحباً بك ${result.user.name}`);
+      goAfterLogin(result.user);
+    } else if (result.reason !== 'cancelled') {
+      toast.error(result.message);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -302,6 +331,31 @@ export default function LoginPage() {
                       </>
                     )}
                   </Button>
+
+                  {passkeySupported && (
+                    <>
+                      <div className="flex items-center gap-3 px-1">
+                        <span className="flex-1 h-px bg-slate-200" />
+                        <span className="text-[11px] font-bold text-slate-400">أو</span>
+                        <span className="flex-1 h-px bg-slate-200" />
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handlePasskeyLogin}
+                        disabled={passkeyLoading || loading}
+                        className="w-full h-12 text-sm font-bold border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 rounded-2xl flex items-center justify-center gap-2 transition-all"
+                      >
+                        {passkeyLoading ? (
+                          <span className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
+                        ) : (
+                          <Fingerprint className="h-4 w-4" />
+                        )}
+                        <span>الدخول بالبصمة</span>
+                      </Button>
+                    </>
+                  )}
                 </form>
               </CardContent>
             </Card>
