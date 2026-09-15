@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Badge }  from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import PasskeyToggle from '@/components/PasskeyToggle';
 
 export default function AccountPage() {
   const { user, logout } = useAuth();
@@ -35,8 +34,6 @@ export default function AccountPage() {
             {user?.codePlain && <Badge variant="outline" className="mt-2 font-mono">{user.codePlain}</Badge>}
           </CardContent>
         </Card>
-
-        <PasskeyToggle />
 
         <Button variant="destructive" className="w-full gap-2 h-12 text-base" onClick={handleLogout}>
           <LogOut className="h-5 w-5" /> تسجيل الخروج

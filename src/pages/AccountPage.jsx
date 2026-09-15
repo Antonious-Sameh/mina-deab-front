@@ -12,6 +12,7 @@ import { Badge }  from '@/components/ui/badge';
 import { accountAPI } from '@/api/services';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { toast } from 'sonner';
+import PasskeyToggle from '@/components/PasskeyToggle';
 
 function Avatar({ user, onUpload, onRemove, uploading }) {
   const fileRef = useRef(null);
@@ -297,6 +298,8 @@ export default function AccountPage() {
             </div>
           </CardContent>
         </Card>
+
+        <PasskeyToggle />
 
         {/* Admin Pages Password Card */}
         <Card className="border shadow-sm">
