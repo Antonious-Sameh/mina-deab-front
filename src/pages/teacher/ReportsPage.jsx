@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
-import { Search, User, Activity, CreditCard, Award, Trophy, Star, BarChart2, Loader2 } from 'lucide-react';
+import { Search, User, Activity, CreditCard, Award, Trophy, Star, BarChart2, Loader2, Folder } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input }  from '@/components/ui/input';
 import { Badge }  from '@/components/ui/badge';
@@ -16,12 +16,58 @@ function Stat({ label, value, color = '' }) {
   );
 }
 
+// ── تجميع درجات الامتحانات الورقية حسب القسم — عرض فقط، بدون أي لمسة للدرجات
+// نفسها. نفس فكرة الفولدرات المستخدمة فعلاً وشغالة في صفحة الدرجات الأساسية
+// (GradesPage.jsx) — هنا بس بنقسّم قائمة درجات طالب واحد بدل قائمة امتحانات.
+// أي حاجة مش امتحان ورقي (إلكتروني، أو سجل قديم بدون exam مرتبط) بترجع زي ما
+// هي في `other` وبتتعرض بنفس الشكل القديم تمامًا، من غير أي تغيير.
+function groupPaperGradesBySection(list) {
+  const sectionsMap = {};
+  const order = [];
+  const other = [];
+
+  (list || []).forEach((g) => {
+    if (g.exam?.examType === 'paper') {
+      const key = g.exam?.section?._id || '__none__';
+      if (!sectionsMap[key]) {
+        sectionsMap[key] = { key, name: g.exam?.section?.name || 'بدون قسم', grades: [] };
+        order.push(key);
+      }
+      sectionsMap[key].grades.push(g);
+    } else {
+      other.push(g);
+    }
+  });
+
+  // "بدون قسم" آخر واحدة، زي نفس الترتيب المستخدم في GradesPage.jsx
+  const sections = order
+    .sort((a, b) => (a === '__none__' ? 1 : 0) - (b === '__none__' ? 1 : 0))
+    .map((k) => sectionsMap[k]);
+
+  return { sections, other };
+}
+
+function GradeRow({ g }) {
+  return (
+    <div className="flex items-center justify-between bg-muted/30 rounded-lg px-4 py-3">
+      <span className="font-medium text-sm">{g.exam?.title}</span>
+      <span className="font-black text-lg text-primary">{g.score} <span className="text-xs text-muted-foreground font-normal">/ {g.exam?.maxScore}</span></span>
+    </div>
+  );
+}
+
 export default function ReportsPage() {
   const [query,   setQuery]   = useState('');
   const [results, setResults] = useState([]);
   const [report,  setReport]  = useState(null);
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
+
+  // تجميع عرض الدرجات حسب القسم — لا يُعاد حسابه إلا لما التقرير نفسه يتغيّر
+  const { sections: paperSections, other: otherGrades } = useMemo(
+    () => groupPaperGradesBySection(report?.grades?.list),
+    [report]
+  );
 
   const handleSearch = async (q) => {
     setQuery(q);
@@ -152,16 +198,24 @@ export default function ReportsPage() {
             </Card>
 
             
-            {report.grades?.list?.length > 0 && (
+            {/* درجات الامتحانات الورقية — مجمّعة حسب القسم (عرض فقط) */}
+            {paperSections.map(sec => (
+              <Card key={sec.key}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex gap-2"><Folder className="h-5 w-5 text-primary" />{sec.name}</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-2">
+                  {sec.grades.map(g => <GradeRow key={g._id} g={g} />)}
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* باقي الدرجات (إلكتروني/قديم) — بنفس الشكل القديم تمامًا، بدون تجميع */}
+            {otherGrades.length > 0 && (
               <Card>
                 <CardHeader className="pb-3"><CardTitle className="text-base flex gap-2"><Award className="h-5 w-5 text-primary" />الدرجات</CardTitle></CardHeader>
                 <CardContent className="pt-0 space-y-2">
-                  {report.grades.list.map(g => (
-                    <div key={g._id} className="flex items-center justify-between bg-muted/30 rounded-lg px-4 py-3">
-                      <span className="font-medium text-sm">{g.exam?.title}</span>
-                      <span className="font-black text-lg text-primary">{g.score} <span className="text-xs text-muted-foreground font-normal">/ {g.exam?.maxScore}</span></span>
-                    </div>
-                  ))}
+                  {otherGrades.map(g => <GradeRow key={g._id} g={g} />)}
                 </CardContent>
               </Card>
             )}
