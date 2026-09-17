@@ -265,21 +265,37 @@ function ElectronicGrades() {
 // Extracted from the inline .map() so React.memo can stop unrelated rows from
 // re-rendering while the teacher types a grade for one student — previously
 // every keystroke re-rendered the entire sheet (all rows, even "كل المجموعات").
-const PaperGradeRow = memo(function PaperGradeRow({ row, index, value, maxScore, isClosed, onChange }) {
+//
+// `unsaved` + `errorReason` — BUGFIX addition: a row is only ever "unsaved"
+// (typed locally but not confirmed by the server yet) or carries a specific
+// save error. Both are shown explicitly instead of letting the input look
+// identical whether the value is really in MongoDB or not.
+const PaperGradeRow = memo(function PaperGradeRow({ row, index, value, maxScore, isClosed, unsaved, errorReason, onChange }) {
   const pct = value !== undefined && value !== '' && maxScore > 0 ? Math.round((Number(value) / maxScore) * 100) : null;
   return (
-    <tr className="hover:bg-muted/20">
+    <tr className={`hover:bg-muted/20 ${errorReason ? 'bg-red-50/60' : ''}`}>
       <td className="px-4 py-2.5 text-muted-foreground">{index + 1}</td>
       <td className="px-4 py-2.5 font-bold">{row.student.name}</td>
       <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.student.studentId ?? '—'}</td>
       <td className="px-4 py-2.5">
-        <Input
-          type="number" min="0" max={maxScore||999}
-          value={value ?? ''}
-          onChange={e => onChange(row.student._id, e.target.value)}
-          placeholder="—" className="w-24 h-8 text-sm text-center"
-          disabled={isClosed}
-        />
+        <div className="flex items-center gap-1.5">
+          <Input
+            type="number" min="0" max={maxScore||999}
+            value={value ?? ''}
+            onChange={e => onChange(row.student._id, e.target.value)}
+            placeholder="—"
+            className={`w-24 h-8 text-sm text-center ${
+              errorReason ? 'border-red-400 focus-visible:ring-red-400' :
+              unsaved     ? 'border-amber-400 focus-visible:ring-amber-400' : ''
+            }`}
+            disabled={isClosed}
+            title={errorReason || (unsaved ? 'لم تُحفظ بعد — اضغط "حفظ"' : '')}
+          />
+          {!isClosed && (errorReason
+            ? <span className="text-red-500 text-xs" title={errorReason}>✕</span>
+            : unsaved ? <span className="text-amber-500 text-xs" title="غير محفوظة">●</span> : null)}
+        </div>
+        {errorReason && <p className="text-[11px] text-red-500 mt-1 max-w-[10rem]">{errorReason}</p>}
       </td>
       <td className="px-4 py-2.5">
         {pct!==null && <span className={`font-bold text-sm ${pct>=50?'text-green-600':'text-red-500'}`}>{pct}%</span>}
@@ -289,11 +305,18 @@ const PaperGradeRow = memo(function PaperGradeRow({ row, index, value, maxScore,
 });
 
 function PaperExamGradeSheet({ exam, year, group, onBack }) {
-  const [sheet,   setSheet]   = useState(null);
-  const [scores,  setScores]  = useState({});
-  const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
-  const [search,  setSearch]  = useState('');
+  const [sheet,       setSheet]       = useState(null);
+  const [scores,      setScores]      = useState({});
+  // ── BUGFIX: savedScores هو "مصدر الحقيقة" — نسخة من آخر قيم مؤكَّدة فعليًا
+  // من MongoDB (من آخر load() ناجح، أو من رد حفظ ناجح). أي فرق بين scores
+  // (اللي المدرس شايفه/بيكتبه) و savedScores يعني "لسه مش محفوظ فعليًا" —
+  // وده بيتعرض بوضوح بدل ما نسيب الحقل يبان "زي ما هو" في الحالتين.
+  const [savedScores, setSavedScores] = useState({});
+  // ── BUGFIX: أخطاء الحفظ لكل طالب على حدة (بدل رفض الدفعة كاملة) ──────────
+  const [saveErrors,  setSaveErrors]  = useState({}); // { studentId: reason }
+  const [loading,     setLoading]     = useState(true);
+  const [saving,       setSaving]      = useState(false);
+  const [search,       setSearch]      = useState('');
 
   // بنستخدم الـ ref ده عشان نمنع الـ useEffect بتاع حفظ الـ Draft إنه يشتغل
   // ويكتب فوق الـ Draft المحفوظ قبل ما نخلص تحميل/استرجاع البيانات أول مرة
@@ -305,22 +328,41 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
     try {
       const r = await api.get(`/grades?exam=${exam._id}`);
       setSheet(r.data.data);
-      const initial = {};
-      (r.data.data.sheet || []).forEach(row => { if (row.entered) initial[row.student._id] = row.score; });
 
-      // ── استرجاع أي درجات مكتوبة ومحفوظة مؤقتًا (Draft) قبل كده ولسه ماتحفظتش ──
+      // القيم المؤكدة فعليًا من السيرفر دلوقتي — الأساس اللي هنقارن بيه.
+      const serverScores = {};
+      (r.data.data.sheet || []).forEach(row => { if (row.entered) serverScores[row.student._id] = row.score; });
+      setSavedScores(serverScores);
+
+      // ── استرجاع أي درجات مكتوبة محليًا (Draft) ولسه ماتحفظتش فعليًا ─────────
+      // BUGFIX: قبل كده كان بيتم استرجاع الـ Draft بالكامل ودمجه فوق قيم
+      // السيرفر بدون أي مقارنة — فلو الـDraft كان قديم/فاشل الحفظ، كان بيبان
+      // للمدرس وكأنه "القيمة الحالية" من غير أي تمييز إنها غير محفوظة، وده
+      // بالظبط اللي كان بيخلي المدرس يفتكر إن التعديل محفوظ بينما مش محفوظ.
+      // دلوقتي: نسترجع بس القيم اللي فعلاً مختلفة عن قيمة السيرفر الحالية
+      // (يعني لسه مش محفوظة)، ونعلّمها بوضوح كـ"غير محفوظة" في الواجهة، بدل
+      // ما نخليها تبان زي أي قيمة محفوظة عادية.
+      const initial = { ...serverScores };
+      let restoredCount = 0;
       try {
         const raw = safeLocalStorage.getItem(gradesDraftKey(exam._id));
         if (raw) {
           const draft = JSON.parse(raw);
           if (draft && typeof draft === 'object') {
-            Object.assign(initial, draft);
-            toast.success('تم استرجاع درجات لم تُحفظ من آخر مرة');
+            Object.entries(draft).forEach(([studentId, val]) => {
+              if (String(val ?? '') !== String(serverScores[studentId] ?? '')) {
+                initial[studentId] = val;
+                restoredCount += 1;
+              }
+            });
           }
         }
       } catch { /* تجاهل أي خطأ في قراءة الـ Draft */ }
 
       setScores(initial);
+      if (restoredCount > 0) {
+        toast.warning(`لديك ${restoredCount} درجة مكتوبة سابقًا ولم تُحفظ فعليًا — راجعها واضغط "حفظ" لتأكيدها`);
+      }
     } catch { toast.error('فشل تحميل الكشف'); }
     finally {
       setLoading(false);
@@ -330,20 +372,29 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // بحث جديد لكل امتحان مختلف — من غير ما نمسحه بعد كل حفظ لنفس الامتحان
-  useEffect(() => { setSearch(''); }, [exam._id]);
+  // بحث/أخطاء جديدة لكل امتحان مختلف — من غير ما نسيب حالة الامتحان اللي
+  // فات (أخطاء حفظ قديمة مثلًا) تظهر غلط فوق امتحان تاني
+  useEffect(() => { setSearch(''); setSaveErrors({}); }, [exam._id]);
 
-  // ── حفظ الدرجات كـ Draft تلقائيًا (محليًا) أثناء الكتابة، قبل الضغط على "حفظ" ──
+  // ── حفظ الـDraft تلقائيًا (محليًا) أثناء الكتابة، قبل الضغط على "حفظ" ──────
+  // BUGFIX: كان بيخزّن كل الـ scores كاملة بغض النظر لو محفوظة فعليًا في
+  // السيرفر أو لأ. دلوقتي بيخزّن بس الفرق الحقيقي (scores مقابل savedScores)
+  // — يعني الـDraft دايمًا يعكس "اللي لسه مش محفوظ" بالظبط، مش أكتر ولا أقل،
+  // وميقدرش يكتب فوق قيمة اتحفظت فعلاً بقيمة قديمة تانية.
   useEffect(() => {
     if (!draftReadyRef.current) return;
     try {
-      if (Object.keys(scores).length > 0) {
-        safeLocalStorage.setItem(gradesDraftKey(exam._id), JSON.stringify(scores));
+      const diff = {};
+      Object.keys(scores).forEach(id => {
+        if (String(scores[id] ?? '') !== String(savedScores[id] ?? '')) diff[id] = scores[id];
+      });
+      if (Object.keys(diff).length > 0) {
+        safeLocalStorage.setItem(gradesDraftKey(exam._id), JSON.stringify(diff));
       } else {
         safeLocalStorage.removeItem(gradesDraftKey(exam._id));
       }
     } catch { /* تجاهل أي خطأ في الحفظ المؤقت — الحفظ الفعلي يعتمد على زر حفظ */ }
-  }, [scores, exam._id]);
+  }, [scores, savedScores, exam._id]);
 
   // اعرض طلاب المجموعة المختارة، أو كل الطلاب لو "كل المجموعات"
   const groupRows = !sheet ? [] : (group === ALL_GROUPS
@@ -354,19 +405,54 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
 
   const onScoreChange = useCallback((studentId, value) => {
     setScores(p => ({ ...p, [studentId]: value }));
+    // المدرس عدّل القيمة تاني — أي خطأ حفظ سابق لنفس الطالب بقى قديم
+    setSaveErrors(p => {
+      if (!(studentId in p)) return p;
+      const next = { ...p }; delete next[studentId]; return next;
+    });
   }, []);
 
   const handleSaveAll = async () => {
     setSaving(true);
     try {
       const grades = groupRows.map(row => ({ studentId: row.student._id, score: Number(scores[row.student._id]) || 0 }));
-      await api.post('/grades/bulk', { examId: exam._id, grades });
-      toast.success('تم حفظ الدرجات ✓');
-      // الدرجات اتحفظت رسميًا على السيرفر — امسح الـ Draft المؤقت المحلي
-      safeLocalStorage.removeItem(gradesDraftKey(exam._id));
+      const res = await api.post('/grades/bulk', { examId: exam._id, grades });
+      const { savedStudentIds = [], failed = [] } = res.data?.data || {};
+
+      // تأكيد محلي فوري للي اتحفظ فعلًا (الـ backend أكّد كتابته في MongoDB) —
+      // وبرضه هنعمل load() تاني كمصدر حقيقة نهائي من السيرفر مباشرة.
+      if (savedStudentIds.length > 0) {
+        setSavedScores(prev => {
+          const next = { ...prev };
+          savedStudentIds.forEach(id => {
+            const g = grades.find(x => String(x.studentId) === String(id));
+            if (g) next[id] = g.score;
+          });
+          return next;
+        });
+      }
+
+      const errorMap = {};
+      failed.forEach(f => { errorMap[f.studentId] = f.reason; });
+      setSaveErrors(errorMap);
+
+      if (failed.length === 0) {
+        toast.success('تم حفظ الدرجات ✓');
+        safeLocalStorage.removeItem(gradesDraftKey(exam._id));
+      } else if (savedStudentIds.length > 0) {
+        toast.warning(`تم حفظ ${savedStudentIds.length} درجة بنجاح — ${failed.length} لم تُحفظ (موضّحة بالأحمر تحت)`);
+      } else {
+        toast.error(`لم تُحفظ أي درجة — ${failed.length} خطأ (موضّح بالأحمر تحت)`);
+      }
+
+      // إعادة الجلب من السيرفر — مصدر الحقيقة الوحيد لما هو "محفوظ فعلاً"،
+      // ده اللي بيضمن إن أي قيمة بتُعرض للمدرس بعد كده هي نفسها اللي في MongoDB.
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'فشل الحفظ');
+      // الطلب فشل بالكامل (شبكة/سيرفر) — لا شيء اتحفظ. الـDraft المحلي يفضل
+      // زي ما هو (مليش أي سبب أمسحه)، فالتعديلات المكتوبة تفضل ظاهرة
+      // كـ"غير محفوظة" بدل ما تختفي أو تتفقد.
+      toast.error(err?.response?.data?.message || 'فشل الحفظ بالكامل — لم يتم حفظ أي درجة، حاول مرة أخرى');
     } finally { setSaving(false); }
   };
 
@@ -374,6 +460,15 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
     const v = scores[row.student._id];
     return v !== undefined && v !== '';
   }).length;
+
+  // عدد الحقول "غير المحفوظة فعليًا" حاليًا — تعديل جديد لسه ماتحفظش، أو
+  // فشل حفظ سابق لسه موجود.
+  const unsavedCount = groupRows.filter(row => {
+    const id = row.student._id;
+    return String(scores[id] ?? '') !== String(savedScores[id] ?? '');
+  }).length;
+
+  const failedRows = groupRows.filter(row => saveErrors[row.student._id]);
 
   // فلترة العرض فقط بالبحث — مبتأثرش على groupRows ولا على حفظ الدرجات
   const visibleRows = useMemo(() => filterRowsBySearch(groupRows, search), [groupRows, search]);
@@ -394,6 +489,26 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
           {saving?'جاري الحفظ...':`حفظ (${filled}/${groupRows.length})`}
         </Button>
       </div>
+
+      {!loading && unsavedCount > 0 && (
+        <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <span>●</span>
+          <span>يوجد {unsavedCount} درجة غير محفوظة فعليًا على السيرفر — اضغط "حفظ" لتأكيدها.</span>
+        </div>
+      )}
+
+      {!loading && failedRows.length > 0 && (
+        <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 space-y-1">
+          <p className="font-bold">لم يتم حفظ درجات الطلاب التالية أسماؤهم:</p>
+          <ul className="list-disc pr-4 space-y-0.5">
+            {failedRows.map(row => (
+              <li key={row.student._id}>
+                <span className="font-medium">{row.student.name}</span> — {saveErrors[row.student._id]}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {!loading && groupRows.length > 0 && (
         <StudentSearchInput value={search} onChange={setSearch} />
@@ -418,17 +533,22 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {visibleRows.map((row,i)=>(
-                  <PaperGradeRow
-                    key={row.student._id}
-                    row={row}
-                    index={i}
-                    value={scores[row.student._id]}
-                    maxScore={exam.maxScore}
-                    isClosed={isClosed}
-                    onChange={onScoreChange}
-                  />
-                ))}
+                {visibleRows.map((row,i)=>{
+                  const id = row.student._id;
+                  return (
+                    <PaperGradeRow
+                      key={id}
+                      row={row}
+                      index={i}
+                      value={scores[id]}
+                      maxScore={exam.maxScore}
+                      isClosed={isClosed}
+                      unsaved={String(scores[id] ?? '') !== String(savedScores[id] ?? '')}
+                      errorReason={saveErrors[id]}
+                      onChange={onScoreChange}
+                    />
+                  );
+                })}
               </tbody>
             </table>
           </div>
