@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import {
   MonitorPlay, Clock, CheckCircle2, Play, Loader2,
   ChevronLeft, BarChart2, X, Image, FileText, AlignLeft,
-  ExternalLink, Eye, Film, Sparkles, BookOpen
+  ExternalLink, Eye, Sparkles, BookOpen
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -476,7 +476,7 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
           <ChevronLeft className="h-5 w-5 rtl:rotate-180 text-slate-700 dark:text-slate-300"/>
         </Button>
         <div className="flex-1 min-w-0">
-          <h2 className="font-extrabold text-slate-900 dark:text-white truncate text-sm sm:text-base leading-snug">{lesson.title}</h2>
+          <h2 className="font-display font-black text-slate-900 dark:text-white truncate text-base sm:text-lg tracking-tight leading-snug">{lesson.title}</h2>
           {completed && (
             <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5 mt-0.5">
               <CheckCircle2 className="h-3.5 w-3.5"/> مكتمل بنجاح
@@ -589,6 +589,168 @@ function LessonDetail({ lesson: initLesson, watchLog, onBack, onCompleted }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// LESSON POSTER — تصميم مخصص بالكامل (بديل الصورة الممطوطة القديمة)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// باقة تدرجات مختارة يدويًا (مش عشوائية) — كل واحدة متناسقة مع هوية الألوان
+// المستخدمة في باقي الصفحة (indigo/emerald/amber) لكن بعمق ودراما أكتر،
+// مخصصة للدروس اللي معهاش صورة غلاف مرفوعة.
+const LESSON_THEMES = [
+  { from: '#1e1b4b', via: '#4338ca', to: '#7c3aed', glow: 'rgba(99,102,241,0.55)'  }, // Indigo Nova
+  { from: '#431407', via: '#c2410c', to: '#f59e0b', glow: 'rgba(245,158,11,0.5)'  }, // Ember
+  { from: '#022c22', via: '#047857', to: '#10b981', glow: 'rgba(16,185,129,0.5)' }, // Emerald Deep
+  { from: '#4c0519', via: '#be123c', to: '#fb7185', glow: 'rgba(251,113,133,0.5)' }, // Rose Quartz
+  { from: '#0c1e2e', via: '#0e7490', to: '#22d3ee', glow: 'rgba(34,211,238,0.5)'  }, // Midnight Teal
+];
+
+// اختيار ثابت (deterministic) للتدرج حسب هوية الدرس — نفس الدرس دايمًا ياخد
+// نفس اللون، من غير ما يتغيّر عشوائيًا مع كل reload.
+function themeFor(seed) {
+  const s = String(seed || '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return LESSON_THEMES[h % LESSON_THEMES.length];
+}
+
+// زخرفة رياضية خفيفة جدًا (رموز + خطوط إنشائية) — بديل واضح ونظيف محل
+// الصورة الشخصية الممطوطة القديمة، بتدّي هوية "منصة رياضيات" بصريًا حتى
+// من غير أي صورة مرفوعة.
+function MathMotif() {
+  return (
+    <svg className="absolute inset-0 w-full h-full text-white" viewBox="0 0 400 225" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="1" fill="currentColor" opacity="0.16" />
+        </pattern>
+      </defs>
+      <rect width="400" height="225" fill="url(#grid)" />
+      <path d="M -20,170 C 90,120 130,210 260,140 S 380,60 430,90" stroke="currentColor" strokeWidth="1.25" fill="none" opacity="0.22" />
+      <path d="M -20,40 C 70,90 110,10 220,55" stroke="currentColor" strokeWidth="1" fill="none" strokeDasharray="3 5" opacity="0.18" />
+      <text x="26" y="76"  fontSize="42" fontWeight="700" fill="currentColor" opacity="0.14">√</text>
+      <text x="330" y="52" fontSize="34" fontWeight="700" fill="currentColor" opacity="0.16" transform="rotate(-8 330 52)">π</text>
+      <text x="300" y="175" fontSize="46" fontWeight="700" fill="currentColor" opacity="0.13" transform="rotate(6 300 175)">∑</text>
+      <text x="55" y="185" fontSize="30" fontWeight="700" fill="currentColor" opacity="0.15">∞</text>
+      <text x="180" y="120" fontSize="26" fontWeight="700" fill="currentColor" opacity="0.10" transform="rotate(-10 180 120)">x²</text>
+    </svg>
+  );
+}
+
+// كارت البوستر بالكامل — الصورة/الزخرفة + كل الـoverlays فوقها. اتعزلت في
+// مكوّن مستقل عشان نتفادى تكرار نفس المنطق، مش تعديل في أي بيانات أو سلوك.
+//
+// أولوية الصورة: 1) صورة غلاف مخصصة للدرس (thumbnailUrl) لو موجودة،
+// 2) صورة المدرس (teacherAvatar) كبديل تلقائي — **لسه موجودة زي الأول
+// بالظبط**، بس بمعالجة أفضل للـcrop والوضوح، مش شيلها. الزخرفة المجردة
+// بتظهر فقط لو الاتنين مش موجودين خالص.
+function LessonPoster({ lesson, idx, done, pct, teacherAvatar }) {
+  const isAvatarFallback = !lesson.thumbnailUrl && !!teacherAvatar;
+  const posterSrc = lesson.thumbnailUrl || teacherAvatar || null;
+  const theme = themeFor(lesson._id || lesson.title || idx);
+
+  return (
+    <div className="relative w-full aspect-video overflow-hidden">
+      {posterSrc ? (
+        <>
+          <img
+            src={posterSrc}
+            alt={lesson.title}
+            loading="lazy"
+            // صورة المدرس (بورتريه) محتاجة تأطير مختلف عن صورة غلاف عادية —
+            // object-top عشان الوشميتقصّش من فوق، وبدون تكبير عند الـhover
+            // (زوم على وش المدرس بيبان غريب)، وبدون درجة اللون الملوّنة اللي
+            // بتتلوّن بيها صور الغلاف التانية (وش المدرس المفروض يفضل طبيعي وواضح).
+            className={`w-full h-full object-cover transition-transform duration-700 ease-out [filter:saturate(1.08)_contrast(1.08)_brightness(1.03)] ${
+              isAvatarFallback ? 'object-top' : 'object-center group-hover:scale-110'
+            }`}
+          />
+          {!isAvatarFallback && (
+            // درجة لون موحّدة فوق صور الغلاف المخصصة بس (مش وش المدرس) — عشان
+            // أي صورة غلاف (مهما اختلفت جودتها الأصلية) تطلع متناسقة مع هوية
+            // المنصة بصريًا.
+            <div
+              className="absolute inset-0 mix-blend-overlay opacity-40"
+              style={{ background: `linear-gradient(160deg, ${theme.from}, transparent 55%, ${theme.to})` }}
+            />
+          )}
+        </>
+      ) : (
+        <div className="relative w-full h-full" style={{ background: `linear-gradient(150deg, ${theme.from}, ${theme.via} 55%, ${theme.to})` }}>
+          <MathMotif />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <BookOpen className="h-9 w-9 text-white/25" strokeWidth={1.5} />
+          </div>
+        </div>
+      )}
+
+      {/* توهج ناعم من لون هوية الدرس نفسه — يدي عمق، متمركز في المنطقة العلوية
+          الأخف عشان يظهر فعليًا بدل ما يتبلع في التدرج الأسود السفلي */}
+      <div
+        className="absolute -inset-6 opacity-70 blur-2xl pointer-events-none mix-blend-plus-lighter"
+        style={{ background: `radial-gradient(55% 50% at 78% 22%, ${theme.glow}, transparent 72%)` }}
+      />
+
+      {/* إطار داخلي رفيع — يدّي إحساس "بوستر مؤطّر" بدل صورة خام */}
+      <div className="absolute inset-0 rounded-[1.75rem] ring-1 ring-inset ring-white/15 pointer-events-none" />
+
+      {/* Gradient ثابت لضمان وضوح النص فوق الصورة */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/10 pointer-events-none"/>
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/40 to-transparent pointer-events-none"/>
+
+      {/* Watch progression indicator */}
+      <div className="absolute bottom-0 inset-x-0 h-[3px] bg-white/10">
+        <div className={`h-full transition-all duration-500 ${done ? 'bg-gradient-to-r from-emerald-400 to-teal-300' : pct > 0 ? 'bg-gradient-to-r from-indigo-400 to-indigo-500' : ''}`} style={{width: done ? '100%' : `${pct}%`}}/>
+      </div>
+
+      {/* شريط علوي: رقم الدرس + شارة الحالة */}
+      <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+        <span className="inline-flex items-center justify-center h-7 min-w-[1.75rem] px-2 rounded-xl bg-black/40 backdrop-blur-md text-white text-[11px] font-black border border-white/15 shadow-sm tabular-nums">
+          {idx+1}
+        </span>
+        {done ? (
+          <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white border-0 text-[10px] font-extrabold shadow-lg shadow-emerald-500/30 rounded-lg px-2.5 py-1 gap-1">
+            <CheckCircle2 className="h-3 w-3"/> مكتمل
+          </Badge>
+        ) : pct > 0 ? (
+          <Badge className="bg-white/15 hover:bg-white/15 backdrop-blur-md text-white border border-white/20 text-[10px] font-extrabold shadow-sm rounded-lg px-2.5 py-1">
+            {Math.round(pct)}%
+          </Badge>
+        ) : null}
+      </div>
+
+      {/* زر التشغيل المركزي */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className={`w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 group-hover:scale-110 ${done ? 'bg-emerald-500/95 shadow-[0_8px_24px_-4px_rgba(16,185,129,0.6)]' : 'bg-white/95 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.35)] group-hover:bg-white'}`}>
+          {done
+            ? <CheckCircle2 className="h-7 w-7 text-white"/>
+            : <Play className="h-6 w-6 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
+        </div>
+      </div>
+
+      {/* عنوان الدرس + الفرع/الوحدة Overlay على الصورة — بخط العرض المميّز */}
+      <div className="absolute inset-x-0 bottom-2 p-3.5 space-y-2">
+        <p className="font-display font-black text-white text-base sm:text-lg leading-tight tracking-tight line-clamp-2 [text-shadow:0_2px_14px_rgba(0,0,0,0.7)]">
+          {lesson.title}
+        </p>
+        {(lesson.branch || lesson.unit) && (
+          <div className="flex items-center gap-1.5 flex-wrap font-display">
+            {lesson.branch && (
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/20 text-white backdrop-blur-md border border-white/20">
+                {lesson.branch}
+              </span>
+            )}
+            {lesson.unit && (
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/20 text-white backdrop-blur-md border border-white/20">
+                {lesson.unit}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════════════════
 export default function StudentOnlinePage() {
@@ -596,7 +758,7 @@ export default function StudentOnlinePage() {
   const [lessons,  setLessons]  = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [watching, setWatching] = useState(null); // { lesson, watchLog }
-  // صورة المدرس تُستخدم كـ Poster تلقائي لأي فيديو مالوش صورة خاصة به
+  // صورة المدرس تُستخدم كـ Poster تلقائي لأي فيديو مالوش صورة غلاف خاصة به
   const [teacherAvatar, setTeacherAvatar] = useState(null);
 
   const load = useCallback(async () => {
@@ -650,7 +812,7 @@ export default function StudentOnlinePage() {
 
             <div className="flex items-center justify-between gap-4 relative z-10">
               <div className="space-y-1.5">
-                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">الدروس الأون لاين</h2>
+                <h2 className="font-display font-black text-2xl sm:text-3xl tracking-tight">الدروس الأون لاين</h2>
                 <div className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-semibold border border-indigo-500/15">
                   <Sparkles className="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
                   <span>{YEAR_LABELS[user?.academicYear]||'منصة الإبداع'}</span>
@@ -697,9 +859,6 @@ export default function StudentOnlinePage() {
                 const types = [...new Set(items.map(i=>i.type))];
                 const typeIcons = { video:'📹 فيديو', image:'🖼 صورة', pdf:'📄 ملف', article:'📝 شرح' };
 
-                // Poster: صورة مخصصة للدرس (thumbnailUrl) أو صورة المدرس تلقائياً كبديل
-                const posterSrc = lesson.thumbnailUrl || teacherAvatar || null;
-
                 return (
                   <Card
                     key={lesson._id}
@@ -710,77 +869,7 @@ export default function StudentOnlinePage() {
                     <div className="pointer-events-none absolute -inset-px rounded-[1.75rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-indigo-500/25 via-transparent to-orange-400/20 blur-[1px] -z-10" />
 
                     <CardContent className="p-0">
-                      {/* Poster / Thumbnail — تصميم Premium بمعلومات Overlay */}
-                      <div className="relative w-full aspect-video bg-slate-900 overflow-hidden">
-                        {posterSrc ? (
-                          <img
-                            src={posterSrc}
-                            alt={lesson.title}
-                            loading="lazy"
-                            className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-110"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.35),transparent_55%),radial-gradient(circle_at_80%_90%,rgba(249,115,22,0.25),transparent_50%),linear-gradient(160deg,#0f172a,#1e1b4b_60%,#0f172a)]">
-                            <Film className="h-11 w-11 text-white/20"/>
-                          </div>
-                        )}
-
-                        {/* Gradient ثابت لضمان وضوح النص فوق الصورة */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-black/10 pointer-events-none"/>
-                        {/* توهّج داخلي خفيف أعلى الصورة يدي عمق للتصميم */}
-                        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/40 to-transparent pointer-events-none"/>
-
-                        {/* Watch progression indicator — انتقلت فوق الصورة كخط بصري أنيق أسفلها مباشرة */}
-                        <div className="absolute bottom-0 inset-x-0 h-[3px] bg-white/10">
-                          <div className={`h-full transition-all duration-500 ${done ? 'bg-gradient-to-r from-emerald-400 to-teal-300' : pct > 0 ? 'bg-gradient-to-r from-indigo-400 to-indigo-500' : ''}`} style={{width: done ? '100%' : `${pct}%`}}/>
-                        </div>
-
-                        {/* شريط علوي: رقم الدرس + شارة الحالة */}
-                        <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center justify-center h-7 min-w-[1.75rem] px-2 rounded-xl bg-black/40 backdrop-blur-md text-white text-[11px] font-black border border-white/15 shadow-sm tabular-nums">
-                            {idx+1}
-                          </span>
-                          {done ? (
-                            <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white border-0 text-[10px] font-extrabold shadow-lg shadow-emerald-500/30 rounded-lg px-2.5 py-1 gap-1">
-                              <CheckCircle2 className="h-3 w-3"/> مكتمل
-                            </Badge>
-                          ) : pct > 0 ? (
-                            <Badge className="bg-white/15 hover:bg-white/15 backdrop-blur-md text-white border border-white/20 text-[10px] font-extrabold shadow-sm rounded-lg px-2.5 py-1">
-                              {Math.round(pct)}%
-                            </Badge>
-                          ) : null}
-                        </div>
-
-                        {/* زر التشغيل المركزي */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className={`w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 group-hover:scale-110 ${done ? 'bg-emerald-500/95 shadow-[0_8px_24px_-4px_rgba(16,185,129,0.6)]' : 'bg-white/95 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.35)] group-hover:bg-white'}`}>
-                            {done
-                              ? <CheckCircle2 className="h-7 w-7 text-white"/>
-                              : <Play className="h-6 w-6 fill-indigo-600 text-indigo-600 mr-[-2px]"/>}
-                          </div>
-                        </div>
-
-                        {/* عنوان الدرس + الفرع/الوحدة Overlay على الصورة */}
-                        <div className="absolute inset-x-0 bottom-2 p-3.5 space-y-2">
-                          <p className="font-extrabold text-white text-sm sm:text-base leading-snug line-clamp-2 [text-shadow:0_2px_10px_rgba(0,0,0,0.6)]">
-                            {lesson.title}
-                          </p>
-                          {(lesson.branch || lesson.unit) && (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {lesson.branch && (
-                                <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white/20 text-white backdrop-blur-md border border-white/20">
-                                  {lesson.branch}
-                                </span>
-                              )}
-                              {lesson.unit && (
-                                <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white/20 text-white backdrop-blur-md border border-white/20">
-                                  {lesson.unit}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <LessonPoster lesson={lesson} idx={idx} done={done} pct={pct} teacherAvatar={teacherAvatar} />
 
                       {/* شريط سفلي مختصر: الوصف + أنواع المحتوى */}
                       <div className="p-4 flex items-center justify-between gap-3 bg-gradient-to-b from-transparent to-slate-50/60 dark:to-slate-950/40">

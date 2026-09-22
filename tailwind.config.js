@@ -16,6 +16,11 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        // خط عرض/عناوين مميّز — مستخدم حاليًا في صفحة "أون لاين" الطالب فقط
+        // (اسم الدرس/الوحدة)، عشان يبقى لمسة بصرية مقصودة مش امتداد لخط الواجهة العادي.
+        display: ['"Noto Kufi Arabic"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
