@@ -569,6 +569,7 @@ function PaperExamGradeSheet({ exam, year, group, onBack }) {
 function SectionTotalSheet({ sectionId, sectionName, year, group, onBack }) {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
+  const [search,  setSearch]  = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -577,6 +578,9 @@ function SectionTotalSheet({ sectionId, sectionName, year, group, onBack }) {
       .catch(() => toast.error('فشل تحميل إجمالي درجات القسم'))
       .finally(() => setLoading(false));
   }, [sectionId, year]);
+
+  // بحث جديد كل ما نفتح قسم مختلف — مايفضلش فيلتر قديم شغال على قسم تاني
+  useEffect(() => { setSearch(''); }, [sectionId, year]);
 
   // نفس منطق فلترة المجموعة المستخدم في باقي كشوف الدرجات بالضبط
   const groupRows = !data ? [] : (group === ALL_GROUPS
@@ -595,6 +599,11 @@ function SectionTotalSheet({ sectionId, sectionName, year, group, onBack }) {
     });
   }, [groupRows]);
 
+  // فلترة عرض فقط بالبحث (اسم/كود/ID) — نفس المنطق المستخدم في كشوف
+  // الامتحانات الفردية بالضبط، بعد الترتيب عشان الترتيب يفضل زي ما هو
+  // لأي طالب مطابق للبحث. مبيأثرش على sortedRows ولا على أي درجة.
+  const visibleRows = useMemo(() => filterRowsBySearch(sortedRows, search), [sortedRows, search]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
@@ -608,7 +617,16 @@ function SectionTotalSheet({ sectionId, sectionName, year, group, onBack }) {
         </div>
       </div>
 
-      {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary"/></div> : (
+      {!loading && groupRows.length > 0 && (
+        <StudentSearchInput value={search} onChange={setSearch} />
+      )}
+
+      {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary"/></div> : visibleRows.length === 0 ? (
+        <div className="text-center py-10 bg-card border rounded-2xl border-dashed">
+          <Search className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-30" />
+          <p className="text-muted-foreground text-sm">لا توجد نتائج{search ? ` للبحث عن "${search}"` : ''}</p>
+        </div>
+      ) : (
         <Card className="border shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-muted/30 border-b flex items-center gap-3 flex-wrap">
             <Badge variant="outline">{groupRows.filter(r=>r.entered).length} من {groupRows.length} لديهم درجات</Badge>
@@ -624,7 +642,7 @@ function SectionTotalSheet({ sectionId, sectionName, year, group, onBack }) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {sortedRows.map((row,i)=>(
+                {visibleRows.map((row,i)=>(
                   <tr key={row.student._id} className={`hover:bg-muted/20 ${!row.entered?'opacity-60':''}`}>
                     <td className="px-4 py-2.5 text-muted-foreground">{i+1}</td>
                     <td className="px-4 py-2.5 font-bold">{row.student.name}</td>
