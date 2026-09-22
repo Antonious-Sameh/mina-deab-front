@@ -644,7 +644,7 @@ function LessonPhoto({ lesson, idx, teacherAvatar }) {
   const theme = themeFor(lesson._id || lesson.title || idx);
 
   return (
-    <div className="relative w-28 sm:w-40 lg:w-48 shrink-0 self-stretch overflow-hidden">
+    <div className="relative w-24 sm:w-36 md:w-44 lg:w-52 xl:w-60 shrink-0 self-stretch overflow-hidden">
       {posterSrc ? (
         <>
           <img
@@ -670,7 +670,7 @@ function LessonPhoto({ lesson, idx, teacherAvatar }) {
       )}
       {/* حافة تدرّج رفيعة عند الحد الفاصل مع لوحة الكتابة — انتقال بصري ناعم
           بدل قطع مفاجئ بين الصورة والخلفية */}
-      <div className="absolute inset-y-0 start-0 w-8 bg-gradient-to-l rtl:bg-gradient-to-r from-transparent to-black/10 dark:to-black/25 pointer-events-none" />
+      <div className="absolute inset-y-0 start-0 w-6 sm:w-10 bg-gradient-to-l rtl:bg-gradient-to-r from-transparent to-black/10 dark:to-black/25 pointer-events-none" />
     </div>
   );
 }
@@ -680,57 +680,57 @@ function LessonPhoto({ lesson, idx, teacherAvatar }) {
 function LessonInfo({ lesson, idx, done, pct, theme }) {
   const hasProgress = pct > 0 && !done;
   return (
-    <div className="relative flex-1 min-w-0 flex flex-col justify-center gap-2 p-4 sm:p-5">
+    <div className="relative flex-1 min-w-0 flex flex-col justify-center gap-2.5 p-4 sm:p-5 md:p-6 lg:p-7">
       {/* رقم الدرس الضخم — عنصر بصري بارز يعبر الحد بين الصورة واللوحة،
           ودوره فعليًا إفادة (ترتيب الدرس)، مش مجرد ديكور */}
       <span
-        className="pointer-events-none select-none absolute top-1/2 z-0 font-display font-black leading-none start-28 sm:start-40 lg:start-48 -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2"
-        style={{ fontSize: 'clamp(2.75rem, 6vw, 4rem)', color: theme.to, opacity: 0.16 }}
+        className="pointer-events-none select-none absolute top-1/2 z-0 font-display font-black leading-none start-24 sm:start-36 md:start-44 lg:start-52 xl:start-60 -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2"
+        style={{ fontSize: 'clamp(2.5rem, 5vw, 5.5rem)', color: theme.to, opacity: 0.16 }}
         aria-hidden="true"
       >
         {String(idx + 1).padStart(2, '0')}
       </span>
 
-      <div className="relative z-10 space-y-2">
+      <div className="relative z-10 space-y-2 sm:space-y-2.5">
         {(lesson.branch || lesson.unit) && (
-          <div className="flex items-center gap-1.5 font-display text-[11px] font-bold" style={{ color: theme.to }}>
+          <div className="flex items-center gap-1.5 font-display text-xs sm:text-sm font-bold" style={{ color: theme.to }}>
             {lesson.branch && <span>{lesson.branch}</span>}
             {lesson.branch && lesson.unit && <span className="opacity-30">•</span>}
             {lesson.unit && <span>{lesson.unit}</span>}
           </div>
         )}
 
-        <p className="font-display font-black text-slate-900 dark:text-white text-lg sm:text-xl leading-tight tracking-tight line-clamp-2">
+        <p className="font-display font-black text-slate-900 dark:text-white text-lg sm:text-xl md:text-2xl leading-tight tracking-tight line-clamp-2">
           {lesson.title}
         </p>
 
         {lesson.description && (
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-1">
+          <p className="hidden sm:block text-xs md:text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-1 md:line-clamp-2">
             {lesson.description}
           </p>
         )}
       </div>
 
-      <div className="relative z-10 flex items-center justify-between gap-3 pt-1">
+      <div className="relative z-10 flex items-center justify-between gap-3 pt-1 sm:pt-2">
         {done ? (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="h-3.5 w-3.5" /> مكتمل
+          <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="h-4 w-4" /> مكتمل
           </span>
         ) : hasProgress ? (
-          <div className="flex items-center gap-2 flex-1 max-w-[7rem]">
-            <div className="h-1.5 flex-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div className="flex items-center gap-2 flex-1 max-w-[9rem] sm:max-w-[11rem]">
+            <div className="h-2 flex-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
               <div className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-indigo-500" style={{ width: `${pct}%` }} />
             </div>
-            <span className="text-[10px] font-bold text-slate-400 tabular-nums shrink-0">{Math.round(pct)}%</span>
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400 tabular-nums shrink-0">{Math.round(pct)}%</span>
           </div>
         ) : <span />}
 
         <span
-          className="inline-flex items-center gap-1 text-[12px] font-extrabold shrink-0 group-hover:gap-1.5 transition-all"
+          className="inline-flex items-center gap-1 text-sm sm:text-base font-extrabold shrink-0 group-hover:gap-1.5 transition-all"
           style={{ color: theme.to }}
         >
           {done ? 'إعادة المشاهدة' : hasProgress ? 'استكمال' : 'ابدأ المشاهدة'}
-          <ChevronLeft className="h-3.5 w-3.5" />
+          <ChevronLeft className="h-4 w-4" />
         </span>
       </div>
     </div>
@@ -836,7 +836,7 @@ export default function StudentOnlinePage() {
               <p className="text-slate-500 dark:text-slate-400 font-bold">لا توجد دروس متاحة حالياً</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
               {lessons.map((lesson, idx) => {
                 const log   = lesson.watchLog;
                 const pct   = log?.watchPercentage || 0;
@@ -846,7 +846,7 @@ export default function StudentOnlinePage() {
                 return (
                   <Card
                     key={lesson._id}
-                    className={`group relative flex border-0 bg-white dark:bg-slate-900 rounded-[1.5rem] overflow-hidden cursor-pointer transition-all duration-500 ease-out shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_24px_-12px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_32px_-14px_rgba(79,70,229,0.3)] dark:hover:shadow-[0_16px_32px_-14px_rgba(99,102,241,0.35)] hover:-translate-y-1 active:scale-[0.99] ${done ? 'ring-2 ring-emerald-400/60 dark:ring-emerald-500/40' : 'ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06]'}`}
+                    className={`group relative flex min-h-[132px] sm:min-h-[168px] md:min-h-[188px] lg:min-h-[208px] xl:min-h-[224px] border-0 bg-white dark:bg-slate-900 rounded-[1.5rem] sm:rounded-[1.75rem] lg:rounded-[2rem] overflow-hidden cursor-pointer transition-all duration-500 ease-out shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_24px_-12px_rgba(0,0,0,0.5)] hover:shadow-[0_18px_36px_-16px_rgba(79,70,229,0.3)] dark:hover:shadow-[0_18px_36px_-16px_rgba(99,102,241,0.35)] hover:-translate-y-1 active:scale-[0.99] ${done ? 'ring-2 ring-emerald-400/60 dark:ring-emerald-500/40' : 'ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06]'}`}
                     onClick={() => setWatching({ lesson, watchLog: log })}
                   >
                     <CardContent className="p-0 flex w-full">
