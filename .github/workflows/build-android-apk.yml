@@ -39,9 +39,19 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
 
+      # علامة "قابل للتنفيذ" بتاعة gradlew أحيانًا بتضيع وقت رفع/تنزيل
+      # الملفات (زي zip) — بنعيد ضبطها هنا يدويًا قبل التشغيل، بدل ما نفترض
+      # إنها موجودة.
+      - name: Make gradlew executable
+        working-directory: android
+        run: chmod +x gradlew
+
+      # بنشغّل gradlew عن طريق bash صراحةً (مش ./gradlew مباشرة) — بالطريقة
+      # دي مش محتاجين نعتمد على علامة "قابل للتنفيذ" أصلاً، حتى لو ضاعت
+      # لأي سبب تاني.
       - name: Build debug APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: bash gradlew assembleDebug
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
