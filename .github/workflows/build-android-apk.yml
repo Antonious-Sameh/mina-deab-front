@@ -33,7 +33,11 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
+      # بدل ما نستخدم أداة خارجية قديمة بتحاول تنزل حزمة "tools" اللي
+      # جوجل شالتها من زمان، بنستخدم أدوات الأندرويد الجاهزة بالفعل على
+      # كمبيوتر GitHub نفسه، وبس نوافق على تراخيصها.
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
 
       - name: Build debug APK
         working-directory: android
