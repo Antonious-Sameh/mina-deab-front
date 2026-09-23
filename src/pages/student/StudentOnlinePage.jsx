@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext.jsx';
 import api from '@/api/axios';
 import { accountAPI } from '@/api/services';
 import PDFViewer from '@/components/PDFViewer';
+import DownloadAppBanner from '@/components/DownloadAppBanner';
 import { toast } from 'sonner';
 
 const YEAR_LABELS = {
@@ -787,7 +788,9 @@ export default function StudentOnlinePage() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.04)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)] pointer-events-none z-0" />
         
         <div className="relative p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 z-10">
-          
+
+          <DownloadAppBanner />
+
           {/* Header Card */}
           <div className="relative overflow-hidden bg-gradient-to-l from-indigo-500/10 via-indigo-500/5 to-transparent dark:from-indigo-600/15 dark:via-indigo-600/5 dark:to-transparent border border-slate-200/80 dark:border-indigo-500/20 rounded-3xl p-6 shadow-sm backdrop-blur-md group max-w-3xl mx-auto">
             
