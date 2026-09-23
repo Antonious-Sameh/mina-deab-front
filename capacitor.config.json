@@ -1,0 +1,13 @@
+{
+  "appId": "com.minadeab.creativity",
+  "appName": "منصة الإبداع في الرياضيات",
+  "webDir": "dist",
+  "server": {
+    "url": "https://mina-deab-front.vercel.app",
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

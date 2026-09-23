@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">منصة الإبداع في الرياضيات</string>
+    <string name="title_activity_main">منصة الإبداع في الرياضيات</string>
+    <string name="package_name">com.minadeab.creativity</string>
+    <string name="custom_url_scheme">com.minadeab.creativity</string>
+</resources>
