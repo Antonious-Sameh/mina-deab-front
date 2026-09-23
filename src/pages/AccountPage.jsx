@@ -13,6 +13,7 @@ import { accountAPI } from '@/api/services';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { toast } from 'sonner';
 import PasskeyToggle from '@/components/PasskeyToggle';
+import GatePasskeyToggle from '@/components/GatePasskeyToggle';
 
 function Avatar({ user, onUpload, onRemove, uploading }) {
   const fileRef = useRef(null);
@@ -347,6 +348,9 @@ export default function AccountPage() {
             )}
           </CardContent>
         </Card>
+
+        <GatePasskeyToggle adminPassword={adminPassword} />
+
         <Card className="border shadow-sm bg-muted/20">
           <CardContent className="p-4">
             <div className="grid grid-cols-2 gap-4 text-sm">

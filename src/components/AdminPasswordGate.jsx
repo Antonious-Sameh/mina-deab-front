@@ -9,15 +9,22 @@
 // The password itself is stored in the database (plain text, by design) and
 // managed by the teacher from the Account page — see accountAPI.verifyAdminPassword.
 //
+// ── بصمة الصفحات المحمية (اختياري، إضافي) ───────────────────────────────────
+// لو الجهاز الحالي عنده بصمة مسجّلة (من صفحة "حسابي")، بيبان زرار بصمة جنب
+// كلمة المرور كبديل سريع لها — كلمة المرور تفضل شغالة دايمًا كـ fallback.
+// تسجيل بصمة جديدة على جهاز مالوش واحدة بيحصل من صفحة "حسابي" بس (مش من
+// هنا)، فمفيش أي طريقة حد يفعّل بصمة من غير ما يعرف كلمة المرور الأول.
+//
 // Usage:
 //   <AdminPasswordGate><GroupsPage /></AdminPasswordGate>
 
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Lock, Loader2 } from 'lucide-react';
+import { Lock, Loader2, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { accountAPI } from '@/api/services';
+import { isGatePasskeySupported, getGatePasskeyStatus, unlockWithGatePasskey } from '@/lib/gatePasskey';
 
 export default function AdminPasswordGate({ children }) {
   const location = useLocation();
@@ -25,6 +32,12 @@ export default function AdminPasswordGate({ children }) {
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
+
+  // بصمة الصفحات المحمية — حالة منفصلة تمامًا عن كلمة المرور، بتتفحص من
+  // جديد مع كل صفحة محمية (زي باقي حالة القفل بالظبط، مفيش أي كاش).
+  const [passkeyAvailable, setPasskeyAvailable] = useState(false);
+  const [passkeyChecking,  setPasskeyChecking]  = useState(false);
+  const [passkeyBusy,      setPasskeyBusy]      = useState(false);
 
   // إعادة القفل بشكل صريح مع أي تغيير في مسار الصفحة — حتى لو React قرر
   // يعيد استخدام نفس نسخة الكومبوننت بدل ما يعمل mount جديد (زي ما بيحصل
@@ -36,6 +49,17 @@ export default function AdminPasswordGate({ children }) {
     setInput('');
     setError('');
   }, [location.pathname]);
+
+  // فحص هل الجهاز الحالي عنده بصمة مسجّلة أصلاً — بس لو المتصفح بيدعم
+  // WebAuthn من الأساس (تجنّب نداء شبكة بلا داعي على متصفحات مش بتدعمها).
+  useEffect(() => {
+    if (unlocked) return;
+    if (!isGatePasskeySupported()) { setPasskeyAvailable(false); return; }
+    setPasskeyChecking(true);
+    getGatePasskeyStatus()
+      .then(setPasskeyAvailable)
+      .finally(() => setPasskeyChecking(false));
+  }, [location.pathname, unlocked]);
 
   if (unlocked) return children;
 
@@ -59,6 +83,21 @@ export default function AdminPasswordGate({ children }) {
     }
   };
 
+  const handlePasskeyUnlock = async () => {
+    if (passkeyBusy) return;
+    setPasskeyBusy(true);
+    setError('');
+    const result = await unlockWithGatePasskey();
+    setPasskeyBusy(false);
+    if (result.ok && result.valid) {
+      setUnlocked(true);
+    } else if (result.ok && !result.valid) {
+      setError('تعذّر التحقق من البصمة، استخدم كلمة المرور');
+    } else if (result.reason !== 'cancelled') {
+      setError(result.message || 'تعذّر التحقق من البصمة، استخدم كلمة المرور');
+    }
+  };
+
   return (
     <div className="min-h-[70vh] flex items-center justify-center p-4" dir="rtl">
       <div className="bg-card border rounded-2xl shadow-lg w-full max-w-sm p-6">
@@ -70,6 +109,27 @@ export default function AdminPasswordGate({ children }) {
           <p className="text-sm text-muted-foreground mt-1">أدخل كلمة المرور للمتابعة</p>
         </div>
 
+        {!passkeyChecking && passkeyAvailable && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full h-11 gap-2 mb-3"
+            disabled={passkeyBusy || checking}
+            onClick={handlePasskeyUnlock}
+          >
+            {passkeyBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4" />}
+            فتح بالبصمة
+          </Button>
+        )}
+
+        {!passkeyChecking && passkeyAvailable && (
+          <div className="flex items-center gap-2 mb-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-[11px] text-muted-foreground">أو</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-3">
           <Input
             type="password"
@@ -77,11 +137,11 @@ export default function AdminPasswordGate({ children }) {
             autoFocus
             onChange={(e) => { setInput(e.target.value); setError(''); }}
             placeholder="كلمة المرور"
-            disabled={checking}
+            disabled={checking || passkeyBusy}
             className={`h-11 text-center ${error ? 'border-destructive focus-visible:ring-destructive' : ''}`}
           />
           {error && <p className="text-xs text-destructive text-center font-medium">{error}</p>}
-          <Button type="submit" className="w-full h-11 gap-2" disabled={checking}>
+          <Button type="submit" className="w-full h-11 gap-2" disabled={checking || passkeyBusy}>
             {checking && <Loader2 className="h-4 w-4 animate-spin" />}
             دخول
           </Button>

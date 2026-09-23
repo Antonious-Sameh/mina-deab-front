@@ -33,6 +33,18 @@ export const passkeyAPI = {
   removeMine:      ()         => api.delete('/auth/passkey/mine', { data: { deviceId: getDeviceId() } }).then(getData),
 };
 
+// بصمة الصفحات المحمية (AdminPasswordGate) — مستقلة تمامًا عن passkeyAPI
+// فوق (بصمة تسجيل الدخول). بديل اختياري لكلمة مرور الصفحات المحمية، على
+// مستوى كل جهاز على حدة، بدون أي قيد "جهاز واحد".
+export const adminGatePasskeyAPI = {
+  registerOptions: (password)  => api.post('/admin-gate-passkey/register/options', { deviceId: getDeviceId(), password }).then(getData),
+  registerVerify:  (response)  => api.post('/admin-gate-passkey/register/verify',  { deviceId: getDeviceId(), response }).then(getData),
+  unlockOptions:   ()          => api.post('/admin-gate-passkey/unlock/options',   { deviceId: getDeviceId() }).then(getData),
+  unlockVerify:    (response)  => api.post('/admin-gate-passkey/unlock/verify',    { deviceId: getDeviceId(), response }).then(getData),
+  status:          ()          => api.get('/admin-gate-passkey/status', { params: { deviceId: getDeviceId() } }).then(getData),
+  removeMine:      ()          => api.delete('/admin-gate-passkey/mine', { data: { deviceId: getDeviceId() } }).then(getData),
+};
+
 // ══════════════════════════════════════════════════════════════════════════════
 // STUDENTS (teacher)
 // ══════════════════════════════════════════════════════════════════════════════
