@@ -7,16 +7,16 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "front/android/**"
-      - "front/capacitor.config.json"
-      - "front/.github/workflows/build-android-apk.yml"
+      - "frontend/android/**"
+      - "frontend/capacitor.config.json"
+      - "frontend/.github/workflows/build-android-apk.yml"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: front
+        working-directory: frontend
 
     steps:
       - uses: actions/checkout@v4
@@ -42,14 +42,14 @@ jobs:
       - uses: android-actions/setup-android@v3
 
       - name: Build debug APK
-        working-directory: front/android
+        working-directory: frontend/android
         run: ./gradlew assembleDebug
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: front/android/app/build/outputs/apk/debug/app-debug.apk
+          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
 
       # ── رفع الـ APK كـ GitHub Release — بيدّيك رابط تحميل مباشر وثابت
       # تقدر تحطه في VITE_APK_DOWNLOAD_URL وفي بانر التحميل داخل المنصة. ────
@@ -58,6 +58,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-v${{ github.run_number }}
-          files: front/android/app/build/outputs/apk/debug/app-debug.apk
+          files: frontend/android/app/build/outputs/apk/debug/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
