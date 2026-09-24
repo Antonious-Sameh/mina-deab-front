@@ -53,9 +53,10 @@ captures/
 .idea/navEditor.xml
 
 # Keystore files
-# Uncomment the following lines if you do not want to check your keystore files in.
-#*.jks
-#*.keystore
+# لازم يفضلوا متجاهلين — ده مفتاح التوقيع الحقيقي بتاع التطبيق، ملوش أي
+# داعي يتحفظ في الكود خالص (بيتولّد وقت البناء بس من GitHub Secrets).
+*.jks
+*.keystore
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild

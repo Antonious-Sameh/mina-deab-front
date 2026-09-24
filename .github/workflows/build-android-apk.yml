@@ -50,24 +50,45 @@ jobs:
         working-directory: android
         run: chmod +x gradlew
 
+      # ── فك تشفير ملف التوقيع السري (Base64) وكتابته كملف حقيقي مؤقت على
+      # جهاز البناء بس — الملف نفسه ولا كلمات المرور بتاعته مش متخزنين في
+      # الكود خالص، جايين من GitHub Secrets وقت التشغيل بس، ومش بيتحفظوا في
+      # أي مكان تاني بعد ما الـ workflow يخلص. ────────────────────────────────
+      - name: Decode release keystore
+        working-directory: android
+        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore.jks
+
       # بنشغّل gradlew عن طريق bash صراحةً (مش ./gradlew مباشرة) — بالطريقة
       # دي مش محتاجين نعتمد على علامة "قابل للتنفيذ" أصلاً، حتى لو ضاعت
       # لأي سبب تاني.
-      - name: Build debug APK
+      #
+      # BUGFIX (تقليل تحذير "مصدر غير معروف" الشديد عند التثبيت): بنبني نسخة
+      # "Release" موقّعة رسميًا بدل نسخة "Debug" (اللي كانت موقّعة بمفتاح
+      # تجريبي عام معروف لكل المطورين). ده مش بيلغي تحذير أندرويد الأساسي
+      # عن تثبيت تطبيقات من بره Google Play (ده جزء طبيعي من نظام أندرويد
+      # نفسه ومفيش حل مجاني ليه غير النشر الرسمي على Google Play)، لكنه بيقلل
+      # كتير من احتمال إن أندرويد/Play Protect "يمنع" التثبيت خالص، ويخليه
+      # في الغالب مجرد تحذير عادي بضغطة "تثبيت على أي حال".
+      - name: Build release APK
         working-directory: android
-        run: bash gradlew assembleDebug
+        run: bash gradlew assembleRelease
+        env:
+          RELEASE_STORE_FILE:     release.keystore.jks
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS:      ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD:   ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: app-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
 
       - name: Attach APK to a GitHub Release
         if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-v${{ github.run_number }}
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          files: android/app/build/outputs/apk/release/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,5 +1,17 @@
 apply plugin: 'com.android.application'
 
+// ── توقيع النسخة النهائية (Release) ─────────────────────────────────────────
+// بيانات التوقيع (الملف السري + كلمات المرور) بتيجي من GitHub Secrets وقت
+// البناء على الـ CI فقط — مفيش أي باسورد أو ملف حساس متسرّب أو متحطوط جوه
+// الكود نفسه هنا. لو الملف ده بيتبني محليًا على جهاز حد من غير الـ Secrets
+// دي، هيبني نسخة غير موقّعة عادي (مينفعش تتثبت، لكن مش هيوقف بناء الويب/
+// الديباج بأي شكل).
+def releaseStoreFile     = System.getenv("RELEASE_STORE_FILE")
+def releaseStorePassword = System.getenv("RELEASE_STORE_PASSWORD")
+def releaseKeyAlias      = System.getenv("RELEASE_KEY_ALIAS")
+def releaseKeyPassword   = System.getenv("RELEASE_KEY_PASSWORD")
+def hasReleaseSigning    = releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
 android {
     namespace = "com.minadeab.creativity"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,10 +28,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
