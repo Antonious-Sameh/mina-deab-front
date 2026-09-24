@@ -11,6 +11,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # لازم صلاحية "write" صريحة عشان الخطوة الأخيرة تقدر تنشئ GitHub Release —
+    # الصلاحية الافتراضية للـ token بتاع الـ workflow بتكون قراءة بس.
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
