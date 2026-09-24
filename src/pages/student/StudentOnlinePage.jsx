@@ -635,18 +635,17 @@ function MathMotif() {
   );
 }
 
-// كارت الدرس — تركيبة مختلفة فعليًا حسب حجم الشاشة، مش نفس العناصر متصغّرة:
-// على الموبايل الصورة مربّعة وفوق، والكتابة تحتها بعرض كامل (تصميم "بطاقة
-// رأسية"). من sm لفوق (تابلت/لابتوب) بيتحول لتصميم "Split" أفقي — صورة في
-// شريط جانبي والكتابة جنبها. التبديل بين الاتنين بمنطق flex-col/flex-row
-// فعلي، مش مجرد تصغير نفس الأبعاد. محدش من البيانات أو الوظائف اتلمس.
+// كارت الدرس بالكامل — تصميم "Split" جديد كليًا: الصورة في شريط جانبي ثابت
+// العرض، والكتابة (العنوان/الوحدة/التقدّم/الزرار) في لوحة منفصلة تمامًا
+// جنبها، مش فوق الصورة خالص. ده تغيير في التركيبة نفسها مش بس الألوان —
+// محدش من البيانات أو الوظائف (onClick، تتبع المشاهدة، الحالة) اتلمس.
 function LessonPhoto({ lesson, idx, teacherAvatar }) {
   const isAvatarFallback = !lesson.thumbnailUrl && !!teacherAvatar;
   const posterSrc = lesson.thumbnailUrl || teacherAvatar || null;
   const theme = themeFor(lesson._id || lesson.title || idx);
 
   return (
-    <div className="relative w-full aspect-square sm:aspect-auto sm:w-36 md:w-44 lg:w-52 xl:w-60 sm:self-stretch shrink-0 overflow-hidden">
+    <div className="relative w-24 sm:w-36 md:w-44 lg:w-52 xl:w-60 shrink-0 self-stretch overflow-hidden">
       {posterSrc ? (
         <>
           <img
@@ -670,18 +669,9 @@ function LessonPhoto({ lesson, idx, teacherAvatar }) {
           <MathMotif />
         </div>
       )}
-
-      {/* حافة تدرّج ناعمة عند حد الالتقاء مع لوحة الكتابة — سفلية على
-          الموبايل (الصورة فوق)، جانبية من sm لفوق (الصورة على الجنب) */}
-      <div className="absolute inset-x-0 bottom-0 h-10 sm:hidden bg-gradient-to-t from-black/15 dark:from-black/30 to-transparent pointer-events-none" />
-      <div className="hidden sm:block absolute inset-y-0 start-0 w-10 bg-gradient-to-l rtl:bg-gradient-to-r from-transparent to-black/10 dark:to-black/25 pointer-events-none" />
-
-      {/* رقم الدرس — بادچ زجاجي مدمج فوق الصورة على الموبايل بس (التصميم
-          الرأسي)، عشان من sm لفوق الرقم الضخم في لوحة الكتابة (LessonInfo)
-          هو اللي بيدّي نفس المعنى بطريقة مختلفة تناسب التصميم الأفقي. */}
-      <span className="sm:hidden absolute top-3 start-3 inline-flex items-center justify-center h-7 min-w-[1.75rem] px-2 rounded-full bg-black/35 backdrop-blur-md text-white text-[11px] font-black border border-white/15 tabular-nums">
-        {idx + 1}
-      </span>
+      {/* حافة تدرّج رفيعة عند الحد الفاصل مع لوحة الكتابة — انتقال بصري ناعم
+          بدل قطع مفاجئ بين الصورة والخلفية */}
+      <div className="absolute inset-y-0 start-0 w-6 sm:w-10 bg-gradient-to-l rtl:bg-gradient-to-r from-transparent to-black/10 dark:to-black/25 pointer-events-none" />
     </div>
   );
 }
@@ -692,12 +682,10 @@ function LessonInfo({ lesson, idx, done, pct, theme }) {
   const hasProgress = pct > 0 && !done;
   return (
     <div className="relative flex-1 min-w-0 flex flex-col justify-center gap-2.5 p-4 sm:p-5 md:p-6 lg:p-7">
-      {/* رقم الدرس الضخم — من sm لفوق بس (وضع الـSplit الأفقي)؛ الموبايل
-          بيستخدم بادچ صغير فوق الصورة بدل كده (شوف LessonPhoto) لأن الرقم
-          الضخم هنا متزامن مع عرض الصورة الجانبية اللي مش موجودة في وضع
-          الموبايل الرأسي. عنصر إفادة (ترتيب الدرس) مش مجرد ديكور. */}
+      {/* رقم الدرس الضخم — عنصر بصري بارز يعبر الحد بين الصورة واللوحة،
+          ودوره فعليًا إفادة (ترتيب الدرس)، مش مجرد ديكور */}
       <span
-        className="hidden sm:block pointer-events-none select-none absolute top-1/2 z-0 font-display font-black leading-none sm:start-36 md:start-44 lg:start-52 xl:start-60 -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2"
+        className="pointer-events-none select-none absolute top-1/2 z-0 font-display font-black leading-none start-24 sm:start-36 md:start-44 lg:start-52 xl:start-60 -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2"
         style={{ fontSize: 'clamp(2.5rem, 5vw, 5.5rem)', color: theme.to, opacity: 0.16 }}
         aria-hidden="true"
       >
@@ -713,12 +701,12 @@ function LessonInfo({ lesson, idx, done, pct, theme }) {
           </div>
         )}
 
-        <p className="font-display font-black text-slate-900 dark:text-white text-xl sm:text-xl md:text-2xl leading-tight tracking-tight line-clamp-2">
+        <p className="font-display font-black text-slate-900 dark:text-white text-lg sm:text-xl md:text-2xl leading-tight tracking-tight line-clamp-2">
           {lesson.title}
         </p>
 
         {lesson.description && (
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
+          <p className="hidden sm:block text-xs md:text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-1 md:line-clamp-2">
             {lesson.description}
           </p>
         )}
@@ -861,10 +849,10 @@ export default function StudentOnlinePage() {
                 return (
                   <Card
                     key={lesson._id}
-                    className={`group relative flex flex-col sm:flex-row sm:min-h-[168px] md:min-h-[188px] lg:min-h-[208px] xl:min-h-[224px] border-0 bg-white dark:bg-slate-900 rounded-[1.5rem] sm:rounded-[1.75rem] lg:rounded-[2rem] overflow-hidden cursor-pointer transition-all duration-500 ease-out shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_24px_-12px_rgba(0,0,0,0.5)] hover:shadow-[0_18px_36px_-16px_rgba(79,70,229,0.3)] dark:hover:shadow-[0_18px_36px_-16px_rgba(99,102,241,0.35)] hover:-translate-y-1 active:scale-[0.99] ${done ? 'ring-2 ring-emerald-400/60 dark:ring-emerald-500/40' : 'ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06]'}`}
+                    className={`group relative flex min-h-[132px] sm:min-h-[168px] md:min-h-[188px] lg:min-h-[208px] xl:min-h-[224px] border-0 bg-white dark:bg-slate-900 rounded-[1.5rem] sm:rounded-[1.75rem] lg:rounded-[2rem] overflow-hidden cursor-pointer transition-all duration-500 ease-out shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_24px_-12px_rgba(0,0,0,0.5)] hover:shadow-[0_18px_36px_-16px_rgba(79,70,229,0.3)] dark:hover:shadow-[0_18px_36px_-16px_rgba(99,102,241,0.35)] hover:-translate-y-1 active:scale-[0.99] ${done ? 'ring-2 ring-emerald-400/60 dark:ring-emerald-500/40' : 'ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06]'}`}
                     onClick={() => setWatching({ lesson, watchLog: log })}
                   >
-                    <CardContent className="p-0 flex flex-col sm:flex-row w-full">
+                    <CardContent className="p-0 flex w-full">
                       <LessonPhoto lesson={lesson} idx={idx} teacherAvatar={teacherAvatar} />
                       <LessonInfo lesson={lesson} idx={idx} done={done} pct={pct} theme={theme} />
                     </CardContent>
