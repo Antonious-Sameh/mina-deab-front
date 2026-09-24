@@ -31,7 +31,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       # بدل ما نستخدم أداة خارجية قديمة بتحاول تنزل حزمة "tools" اللي
       # جوجل شالتها من زمان، بنستخدم أدوات الأندرويد الجاهزة بالفعل على
