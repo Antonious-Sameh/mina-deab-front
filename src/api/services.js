@@ -224,6 +224,8 @@ export const accountAPI = {
   getAdminPassword:    ()         => api.get('/account/admin-password').then(getData),
   updateAdminPassword: (password) => api.patch('/account/admin-password', { password }).then(getData),
   verifyAdminPassword: (password) => api.post('/account/verify-admin-password', { password }).then(getData),
+  getDeviceTransitionMode:    ()        => api.get('/account/device-transition-mode').then(getData),
+  updateDeviceTransitionMode: (enabled) => api.patch('/account/device-transition-mode', { enabled }).then(getData),
   // Public — used as the default poster/thumbnail source for video cards
   teacherInfo: ()                 => api.get('/account/teacher-info').then(getData),
 };

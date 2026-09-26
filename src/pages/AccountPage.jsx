@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext.jsx';
 import { toast } from 'sonner';
 import PasskeyToggle from '@/components/PasskeyToggle';
 import GatePasskeyToggle from '@/components/GatePasskeyToggle';
+import DeviceTransitionToggle from '@/components/DeviceTransitionToggle';
 
 function Avatar({ user, onUpload, onRemove, uploading }) {
   const fileRef = useRef(null);
@@ -350,6 +351,8 @@ export default function AccountPage() {
         </Card>
 
         <GatePasskeyToggle adminPassword={adminPassword} />
+
+        <DeviceTransitionToggle />
 
         <Card className="border shadow-sm bg-muted/20">
           <CardContent className="p-4">
