@@ -113,7 +113,17 @@ const PointsLeaderboardRow = memo(function PointsLeaderboardRow({ s, idx, sid, i
       </td>
 
       {/* Name */}
-      <td className="px-4 py-3 font-bold">{s.name}</td>
+      <td className="px-4 py-3 font-bold">
+        {s.name}
+        <span className={`mr-2 align-middle text-[10px] font-bold rounded-full px-2 py-0.5 border ${
+          s.studentType === 'online' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        }`}>
+          {s.studentType === 'online' ? 'أونلاين' : 'سنتر'}
+        </span>
+      </td>
+
+      {/* Student ID */}
+      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{s.studentId ?? '—'}</td>
 
       {/* Code */}
       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{s.codePlain}</td>
@@ -262,8 +272,13 @@ export default function PointsPage() {
       withBalance.sort((a, b) => b.balance - a.balance);
     }
     if (!q) return withBalance;
+    const raw = search.trim();
+    const rawUpper = raw.toUpperCase();
     return withBalance.filter(s =>
-      norm(s.name).includes(q) || (s.codePlain || '').includes(search.trim())
+      norm(s.name).includes(q) ||
+      (s.codePlain || '').toUpperCase().includes(rawUpper) ||
+      // الـ ID بيتطابق تمامًا (5 ما تجيبش 15 و 25) — ومفيش تكرار جوه نفس المرحلة
+      (s.studentId != null && String(s.studentId) === raw)
     );
   }, [students, balances, search, sortBy]);
 
@@ -321,7 +336,7 @@ export default function PointsPage() {
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="ابحث بالاسم أو الكود..."
+              placeholder="ابحث بالاسم أو الكود أو الـ ID..."
               className="h-11 pr-9 pl-8"
             />
             {search && (
@@ -379,6 +394,7 @@ export default function PointsPage() {
                   <tr>
                     <th className="px-4 py-3 w-10">#</th>
                     <th className="px-4 py-3">الطالب</th>
+                    <th className="px-4 py-3">ID</th>
                     <th className="px-4 py-3">الكود</th>
                     <th className="px-4 py-3 text-center">النقاط الحالية</th>
                     <th className="px-4 py-3 text-center">إجراءات</th>

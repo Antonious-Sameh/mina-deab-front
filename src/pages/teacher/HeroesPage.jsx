@@ -10,6 +10,7 @@ import { Input }  from '@/components/ui/input';
 import { Label }  from '@/components/ui/label';
 import { heroesAPI } from '@/api/services';
 import api from '@/api/axios';
+import HeroImage from '@/components/HeroImage';
 import { toast } from 'sonner';
 
 // ── Album Form Modal ──────────────────────────────────────────────────────────
@@ -124,7 +125,7 @@ function UploadModal({ albumId, onClose, onSaved }) {
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {files.map((f, i) => (
                 <div key={i} className="flex items-center gap-3 bg-muted/30 rounded-lg p-2">
-                  <img src={previews[i]} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+                  <img src={previews[i]} alt="" className="w-10 h-10 rounded object-contain bg-muted shrink-0" />
                   <Input
                     value={captions[i] || ''}
                     onChange={e => setCaptions(p => { const n=[...p]; n[i]=e.target.value; return n; })}
@@ -153,6 +154,7 @@ function AlbumView({ album, onBack, onUpdated }) {
   const [data,    setData]    = useState(album);
   const [loading, setLoading] = useState(false);
   const [upload,  setUpload]  = useState(false);
+  const [zoomed,  setZoomed]  = useState(null);
 
   const reload = async () => {
     const r = await api.get(`/heroes/${album._id}`);
@@ -192,21 +194,31 @@ function AlbumView({ album, onBack, onUpdated }) {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {data.photos.map(photo => (
-            <div key={photo._id} className="group relative rounded-xl overflow-hidden border bg-muted aspect-square">
-              <img src={photo.url} alt={photo.caption || ''} loading="lazy" className="w-full h-full object-cover" />
+            <div key={photo._id} className="group relative rounded-xl overflow-hidden border bg-muted aspect-[4/5] cursor-zoom-in" onClick={() => setZoomed(photo)}>
+              <HeroImage src={photo.url} alt={photo.caption || ''} className="w-full h-full" />
               {photo.caption && (
-                <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-xs px-2 py-1 text-center truncate">
+                <div className="absolute z-20 bottom-0 inset-x-0 bg-black/60 text-white text-xs px-2 py-1 text-center truncate">
                   {photo.caption}
                 </div>
               )}
               <button
-                onClick={() => handleDeletePhoto(photo._id)}
-                className="absolute top-2 left-2 w-7 h-7 bg-red-500 text-white rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity flex"
+                onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photo._id); }}
+                className="absolute z-20 top-2 left-2 w-7 h-7 bg-red-500 text-white rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity flex"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {zoomed && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4" onClick={() => setZoomed(null)}>
+          <button onClick={() => setZoomed(null)} className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-full">
+            <X className="h-5 w-5" />
+          </button>
+          <img src={zoomed.url} alt={zoomed.caption || ''} onClick={e => e.stopPropagation()} className="max-w-full max-h-[85vh] object-contain rounded-lg" />
+          {zoomed.caption && <p className="mt-3 text-white text-sm font-medium text-center">{zoomed.caption}</p>}
         </div>
       )}
 
@@ -279,13 +291,13 @@ export default function HeroesPage() {
               <Card key={album._id} className="border shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer group" onClick={() => setViewing(album)}>
                 <div className="aspect-video bg-muted relative overflow-hidden">
                   {album.coverUrl ? (
-                    <img src={album.coverUrl} alt={album.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <HeroImage src={album.coverUrl} alt={album.title} className="w-full h-full" imgClassName="group-hover:scale-105 transition-transform duration-300" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
                       <FolderOpen className="h-12 w-12 text-primary/30" />
                     </div>
                   )}
-                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                  <div className="absolute z-20 bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
                     {album.photoCount || 0} صورة
                   </div>
                 </div>

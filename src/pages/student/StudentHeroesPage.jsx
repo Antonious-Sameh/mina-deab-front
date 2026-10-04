@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet';
 import { Medal, Loader2, ChevronLeft, FolderOpen, Image, Star, Eye, ZoomIn, X, Sparkles } from 'lucide-react';
 import { heroesAPI } from '@/api/services';
 import api from '@/api/axios';
+import HeroImage from '@/components/HeroImage';
 
 // --- مكون عرض الألبوم وصوره بعد إعادة التصميم الجذري (Cinematic Design System) ---
 function AlbumView({ album, onBack }) {
@@ -61,18 +62,18 @@ function AlbumView({ album, onBack }) {
               key={photo._id} 
               onClick={() => setZoomedPhoto(photo)}
               className={`group relative cursor-zoom-in overflow-hidden rounded-2xl border border-border/50 bg-secondary/20 shadow-xs transition-all duration-500 hover:shadow-2xl hover:border-border-strong ${
-                index % 4 === 0 ? 'sm:col-span-2 sm:row-span-1 aspect-[21/9]' : 'aspect-square'
+                'aspect-[4/5]'
               }`}
             >
-              <img 
-                src={photo.url} 
-                alt={photo.caption || ''} 
-                loading="lazy"
-                className="w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-105 filter grayscale-[20%] group-hover:grayscale-0" 
+              <HeroImage
+                src={photo.url}
+                alt={photo.caption || ''}
+                className="w-full h-full"
+                imgClassName="transition-transform duration-700 ease-out group-hover:scale-105"
               />
               
               {/* واجهة تحكم زجاجية عائمة تظهر بنعومة فائقة عند الحوم (Hover) */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-6 flex flex-col justify-between">
+              <div className="absolute z-20 inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-6 flex flex-col justify-between">
                 <div className="flex justify-end">
                   <span className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-md text-white flex items-center justify-center border border-white/20 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
                     <ZoomIn className="h-4 w-4" />
@@ -208,11 +209,11 @@ export default function StudentHeroesPage() {
                 {/* غلاف الألبوم المنفصل هندسياً بروايا حادة ناعمة وتأثير زووم فاخر */}
                 <div className="relative w-full aspect-[16/10] overflow-hidden rounded-2xl bg-secondary border border-border/40 shadow-xs group-hover:shadow-xl transition-all duration-500">
                   {album.coverUrl ? (
-                    <img 
-                      src={album.coverUrl} 
-                      alt={album.title} 
-                      loading="lazy"
-                      className="w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-105 filter contrast-[95%]" 
+                    <HeroImage
+                      src={album.coverUrl}
+                      alt={album.title}
+                      className="w-full h-full"
+                      imgClassName="transition-transform duration-700 ease-out group-hover:scale-105"
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-secondary/50 to-secondary">
@@ -222,7 +223,7 @@ export default function StudentHeroesPage() {
                   )}
                   
                   {/* بادج عائم ناصع وشفاف لعدد الصور موجه لليسار */}
-                  <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-lg text-foreground text-[10px] font-black px-3 py-1.5 rounded-full border border-border/60 shadow-sm flex items-center gap-1.5">
+                  <div className="absolute z-20 top-4 left-4 bg-background/80 backdrop-blur-lg text-foreground text-[10px] font-black px-3 py-1.5 rounded-full border border-border/60 shadow-sm flex items-center gap-1.5">
                     <Image className="h-3 w-3" />
                     <span>{album.photoCount || 0} صورة</span>
                   </div>
