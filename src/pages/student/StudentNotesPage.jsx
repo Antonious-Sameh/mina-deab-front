@@ -220,9 +220,9 @@ export default function StudentNotesPage() {
     } catch {
       toast.error('فشل تحميل الملاحظات');
     } finally {
-      loading && setLoading(false);
+      setLoading(false);
     }
-  }, [loading]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 

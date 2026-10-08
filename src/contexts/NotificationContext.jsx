@@ -21,9 +21,30 @@ export function NotificationProvider({ children }) {
 
   useEffect(() => {
     if (!user || user.role !== 'student') { setUnreadCount(0); return; }
+
+    const start = () => {
+      clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(fetchCount, 60_000); // poll every 60s
+    };
+    const stop = () => {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    };
+    // Poll only while the page is visible; pause in the background and
+    // fetch once immediately when the user comes back.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') { fetchCount(); start(); }
+      else { stop(); }
+    };
+
     fetchCount();
-    intervalRef.current = setInterval(fetchCount, 60_000); // poll every 60s
-    return () => clearInterval(intervalRef.current);
+    if (document.visibilityState === 'visible') start();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [user, fetchCount]);
 
   const contextValue = useMemo(

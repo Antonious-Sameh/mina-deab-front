@@ -272,6 +272,9 @@ function ExamInterface({ exam, onSubmitted, onClose }) {
   );
 }
 
+// True when every exam in the list carries its own `mySubmission` (new backend).
+const hasMySubmissions = (list) => list.length > 0 && list.every(e => 'mySubmission' in e);
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function StudentExamsPage() {
   const { user } = useAuth();
@@ -284,11 +287,19 @@ export default function StudentExamsPage() {
 
   const load = useCallback(async () => {
     try {
-      const d = await api.get('/exams', { params: { year: user?.academicYear, status: 'published' } });
-      setExams(d.data.data.exams || []);
+      const d = await api.get('/exams', { params: { year: user?.academicYear, status: 'published', withMySubmission: 1 } });
+      const list = d.data.data.exams || [];
+      // Backend attached each exam's own submission → no per-exam /my-result needed.
+      if (hasMySubmissions(list)) {
+        const map = {};
+        list.forEach(e => { map[e._id] = e.mySubmission; });
+        setSubmissions(map);
+      }
+      setExams(list);
     } catch { toast.error('فشل تحميل الامتحانات'); }
     finally { setLoading(false); }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?._id, user?.academicYear]); // reload only when the student or year actually changes, not on every `user` object re-creation
 
   // Load my results for each exam
   const [submissions, setSubmissions] = useState({});
@@ -310,7 +321,8 @@ export default function StudentExamsPage() {
   }, [load]);
 
   useEffect(() => {
-    if (exams.length > 0) loadSubmissions(exams);
+    // Fallback: only fetch per-exam results when the backend didn't include them.
+    if (exams.length > 0 && !hasMySubmissions(exams)) loadSubmissions(exams);
   }, [exams, loadSubmissions]);
 
   const handleSubmitted = (submission) => {
