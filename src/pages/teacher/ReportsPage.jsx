@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Helmet } from 'react-helmet';
-import { Search, User, Activity, CreditCard, Award, Trophy, Star, BarChart2, Loader2, Folder } from 'lucide-react';
+import { Search, User, Activity, CreditCard, Award, Trophy, Star, BarChart2, Loader2, Folder, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input }  from '@/components/ui/input';
 import { Badge }  from '@/components/ui/badge';
-import { studentsAPI } from '@/api/services';
+import { studentsAPI, attendanceAPI } from '@/api/services';
 import { toast } from 'sonner';
 
 function Stat({ label, value, color = '' }) {
@@ -56,12 +56,87 @@ function GradeRow({ g }) {
   );
 }
 
+// ── تفاصيل الحضور (عرض فقط) — بتتطلب من السيرفر فقط لما المدرس يضغط الزر،
+// ولطالب واحد بس، وبتتخزن في الـ cache عشان إعادة الفتح ما تعملش request تاني.
+// بتستخدم endpoint الموجود أصلاً (GET /attendance/student/:id) بدون أي تعديل.
+const AR_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+function groupAttendanceByMonth(records) {
+  const map = {};
+  (records || []).forEach((r) => {
+    const [y, m, d] = String(r.date).split('-');
+    const key = `${y}-${m}`;
+    if (!map[key]) map[key] = { key, label: `${AR_MONTHS[Number(m) - 1] || m} ${y}`, days: [] };
+    map[key].days.push({ id: r._id || `${r.date}-${r.status}`, day: Number(d), date: r.date, status: r.status, note: r.note });
+  });
+  return Object.values(map)
+    .sort((a, b) => b.key.localeCompare(a.key))
+    .map((g) => ({ ...g, days: g.days.sort((a, b) => a.date.localeCompare(b.date)) }));
+}
+
+function AttendanceDetails({ studentId, cacheRef }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [months, setMonths] = useState(() => cacheRef.current[studentId] || null);
+
+  const toggle = async () => {
+    if (open) { setOpen(false); return; }
+    setOpen(true);
+    if (months || loading) return;
+    setLoading(true);
+    try {
+      const d = await attendanceAPI.getStudentHistory(studentId, { limit: 1000 });
+      const grouped = groupAttendanceByMonth(d.records);
+      cacheRef.current[studentId] = grouped;
+      setMonths(grouped);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل تحميل تفاصيل الحضور');
+      setOpen(false);
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="mt-4 pt-3 border-t">
+      <button type="button" onClick={toggle}
+        className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline">
+        تفاصيل الحضور
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-4">
+          {loading && <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}
+          {!loading && months && months.length === 0 && (
+            <p className="text-sm text-muted-foreground">لا توجد سجلات حضور لهذا الطالب</p>
+          )}
+          {!loading && months && months.map((m) => (
+            <div key={m.key}>
+              <p className="font-bold text-sm mb-2">{m.label}</p>
+              <ul className="space-y-1">
+                {m.days.map((r) => (
+                  <li key={r.id} className="flex items-center justify-between bg-muted/30 rounded-lg px-3 py-2 text-sm">
+                    <span>{r.day} {AR_MONTHS[Number(r.date.split('-')[1]) - 1]}</span>
+                    <span className={`font-bold ${r.status === 'present' ? 'text-green-600' : 'text-red-600'}`}>
+                      {r.status === 'present' ? 'حاضر' : 'غائب'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ReportsPage() {
   const [query,   setQuery]   = useState('');
   const [results, setResults] = useState([]);
   const [report,  setReport]  = useState(null);
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
+  const attendanceCache = useRef({}); // studentId → تفاصيل الحضور المجمّعة (للصفحة الحالية فقط)
 
   // تجميع عرض الدرجات حسب القسم — لا يُعاد حسابه إلا لما التقرير نفسه يتغيّر
   const { sections: paperSections, other: otherGrades } = useMemo(
@@ -194,6 +269,7 @@ export default function ReportsPage() {
                   <Stat label="الإجمالي" value={report.attendance?.total   || 0} />
                   <Stat label="النسبة"   value={`${report.attendance?.percentage || 0}%`} color="text-primary" />
                 </div>
+                <AttendanceDetails key={report.student._id} studentId={report.student._id} cacheRef={attendanceCache} />
               </CardContent>
             </Card>
 
