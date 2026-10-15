@@ -252,7 +252,7 @@ export default function ReportsPage() {
               </CardContent></Card>
               <Card><CardContent className="p-4 text-center">
                 <CreditCard className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                <p className={`text-lg font-black ${report.payments?.totalRemaining === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={`text-lg font-black ${report.payments?.status === 'مكتمل' ? 'text-green-600' : 'text-red-600'}`}>
                   {report.payments?.status || '—'}
                 </p>
                 <p className="text-xs text-muted-foreground">المدفوعات</p>
