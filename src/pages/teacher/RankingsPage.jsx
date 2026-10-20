@@ -1,42 +1,63 @@
-import React, { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet';
-import { Trophy, Medal, Loader2, Monitor, ClipboardList } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import api from '@/api/axios';
-import { toast } from 'sonner';
+import React, { useState, useEffect, useMemo } from "react";
+import { Helmet } from "react-helmet";
+import {
+  Trophy,
+  Medal,
+  Loader2,
+  Monitor,
+  ClipboardList,
+  Folder,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import api from "@/api/axios";
+import { toast } from "sonner";
 
 const ACADEMIC_YEARS = [
-  { value:'first-prep',  label:'الصف الأول الإعدادي'  },
-  { value:'second-prep', label:'الصف الثاني الإعدادي' },
-  { value:'third-prep',  label:'الصف الثالث الإعدادي' },
-  { value:'first-sec',   label:'الصف الأول الثانوي'   },
-  { value:'second-sec',  label:'الصف الثاني الثانوي'  },
-  { value:'third-sec',   label:'الصف الثالث الثانوي'  },
+  { value: "first-prep", label: "الصف الأول الإعدادي" },
+  { value: "second-prep", label: "الصف الثاني الإعدادي" },
+  { value: "third-prep", label: "الصف الثالث الإعدادي" },
+  { value: "first-sec", label: "الصف الأول الثانوي" },
+  { value: "second-sec", label: "الصف الثاني الثانوي" },
+  { value: "third-sec", label: "الصف الثالث الثانوي" },
 ];
 
 function RankIcon({ rank }) {
-  if (rank===1) return <Trophy className="h-5 w-5 text-yellow-500"/>;
-  if (rank===2) return <Medal  className="h-5 w-5 text-slate-400"/>;
-  if (rank===3) return <Medal  className="h-5 w-5 text-orange-400"/>;
-  return <span className="text-sm font-black text-muted-foreground">{rank}</span>;
+  if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-500" />;
+  if (rank === 2) return <Medal className="h-5 w-5 text-slate-400" />;
+  if (rank === 3) return <Medal className="h-5 w-5 text-orange-400" />;
+  return (
+    <span className="text-sm font-black text-muted-foreground">{rank}</span>
+  );
 }
 
 export default function RankingsPage() {
-  const [year,      setYear]      = useState('');
-  const [examType,  setExamType]  = useState('');
-  const [exams,     setExams]     = useState([]);  // list of available exams
-  const [selectedExam, setSelectedExam] = useState(null); // { id?, title, maxScore }
-  const [rankings,  setRankings]  = useState([]);
-  const [loading,   setLoading]   = useState(false);
+  const [year, setYear] = useState("");
+  const [examType, setExamType] = useState("");
+  const [exams, setExams] = useState([]); // list of available exams (each carries its section)
+  const [sectionKey, setSectionKey] = useState(""); // sectionId | '__none__' — امتحانات ورقية فقط
+  const [selectedExam, setSelectedExam] = useState(null); // { id, title, maxScore }
+  const [rankings, setRankings] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [loadingExams, setLoadingExams] = useState(false);
 
   // Load exam list when year + type selected
   useEffect(() => {
-    setExams([]); setSelectedExam(null); setRankings([]);
+    setExams([]);
+    setSectionKey("");
+    setSelectedExam(null);
+    setRankings([]);
+    setLoadingExams(false); // الطلب القديم (لو ملغي) مش هيعمل reset بنفسه
     if (!year || !examType) return;
     setLoadingExams(true);
+    let cancelled = false; // تجاهل رد قديم لو المدرس غيّر المرحلة/النوع قبل ما يوصل
 
     // ملاحظة: امتحانات الورقي والإلكتروني بيتم تخزينهم بنفس الطريقة تمامًا
     // (مستند Exam حقيقي + درجات مربوطة بـ exam._id) — فبنجيبهم من نفس الـ
@@ -44,83 +65,256 @@ export default function RankingsPage() {
     // الامتحانات اللي المدرس بيدخلها من صفحة الدرجات.
     const fetchExams = async () => {
       try {
-        const r = await api.get('/exams', { params: { year } });
-        const list = (r.data.data.exams || []).filter(e =>
-          examType === 'electronic'
-            ? (e.examType === 'electronic' || !e.examType) && e.status !== 'draft'
-            : e.examType === 'paper' && e.status !== 'draft'
+        const r = await api.get("/exams", { params: { year } });
+        const list = (r.data.data.exams || []).filter((e) =>
+          examType === "electronic"
+            ? (e.examType === "electronic" || !e.examType) &&
+              e.status !== "draft"
+            : e.examType === "paper" && e.status !== "draft",
         );
-        setExams(list.map(e => ({ id: e._id, title: e.title, maxScore: e.maxScore })));
-      } catch { toast.error('فشل تحميل قائمة الامتحانات'); }
-      finally { setLoadingExams(false); }
+        if (cancelled) return;
+        setExams(
+          list.map((e) => ({
+            id: e._id,
+            title: e.title,
+            maxScore: e.maxScore,
+            examDate: e.examDate,
+            sectionKey: e.section?._id || "__none__",
+            sectionName: e.section?.name || "بدون قسم",
+          })),
+        );
+      } catch {
+        if (!cancelled) toast.error("فشل تحميل قائمة الامتحانات");
+      } finally {
+        if (!cancelled) setLoadingExams(false);
+      }
     };
     fetchExams();
+    return () => {
+      cancelled = true;
+    };
   }, [year, examType]);
+
+  // الأقسام (الفولدرات) الموجودة فعليًا — للامتحانات الورقية فقط (الإلكترونية ملهاش أقسام)
+  const sections = useMemo(() => {
+    const map = new Map();
+    exams.forEach((e) => {
+      if (!map.has(e.sectionKey))
+        map.set(e.sectionKey, { key: e.sectionKey, name: e.sectionName });
+    });
+    return [...map.values()].sort(
+      (a, b) => (a.key === "__none__") - (b.key === "__none__"),
+    );
+  }, [exams]);
+
+  // الامتحانات المعروضة: الورقي = امتحانات القسم المختار فقط، الإلكتروني = الكل
+  const visibleExams = useMemo(
+    () =>
+      examType === "paper"
+        ? exams.filter((e) => e.sectionKey === sectionKey)
+        : exams,
+    [exams, examType, sectionKey],
+  );
+
+  const examLabel = (e) => {
+    const d = e.examDate
+      ? new Date(e.examDate).toLocaleDateString("ar-EG")
+      : "";
+    return `${e.title}${e.maxScore > 0 ? ` (${e.maxScore} درجة)` : ""}${
+      examType === "electronic" && d ? ` — ${d}` : ""
+    }`;
+  };
 
   // Load rankings when exam selected
   useEffect(() => {
     setRankings([]);
+    setLoading(false); // الطلب القديم (لو ملغي) مش هيعمل reset بنفسه
     if (!year || !examType || !selectedExam) return;
     setLoading(true);
 
     const params = { year, examType, examId: selectedExam.id };
+    let cancelled = false;
 
-    api.get('/grades/exam-rankings', { params })
-      .then(r => setRankings(r.data.data.rankings || []))
-      .catch(() => toast.error('فشل تحميل الترتيب'))
-      .finally(() => setLoading(false));
+    api
+      .get("/grades/exam-rankings", { params })
+      .then((r) => {
+        if (!cancelled) setRankings(r.data.data.rankings || []);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("فشل تحميل الترتيب");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedExam]);
 
-  const enteredRankings = rankings.filter(r => r.entered);
+  const enteredRankings = rankings.filter((r) => r.entered);
   const maxScore = selectedExam?.maxScore || enteredRankings[0]?.maxScore || 0;
 
   return (
     <>
-      <Helmet><title>ترتيب الطلاب | نظام المعلم</title></Helmet>
+      <Helmet>
+        <title>ترتيب الطلاب | نظام المعلم</title>
+      </Helmet>
       <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5">
-
         {/* Header */}
         <div className="bg-card border rounded-2xl p-5 shadow-sm">
           <h2 className="text-2xl font-extrabold">ترتيب الطلاب</h2>
-          <p className="text-muted-foreground text-sm mt-0.5">الترتيب حسب درجات امتحان واحد</p>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            الترتيب حسب درجات امتحان واحد
+          </p>
         </div>
 
-        {/* 3-step filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* filters: مرحلة ← نوع ← (قسم للورقي) ← امتحان */}
+        <div
+          className={`grid grid-cols-1 gap-3 ${
+            examType === "paper" ? "sm:grid-cols-4" : "sm:grid-cols-3"
+          }`}
+        >
           {/* Step 1: Year */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground">١. المرحلة الدراسية</label>
-            <Select value={year} onValueChange={v => { setYear(v); setExamType(''); setExams([]); setSelectedExam(null); setRankings([]); }}>
-              <SelectTrigger className="h-11"><SelectValue placeholder="اختر المرحلة..."/></SelectTrigger>
-              <SelectContent>{ACADEMIC_YEARS.map(y=><SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>)}</SelectContent>
+            <label className="text-xs font-semibold text-muted-foreground">
+              ١. المرحلة الدراسية
+            </label>
+            <Select
+              value={year}
+              onValueChange={(v) => {
+                setYear(v);
+                setExamType("");
+                setExams([]);
+                setSectionKey("");
+                setSelectedExam(null);
+                setRankings([]);
+              }}
+            >
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="اختر المرحلة..." />
+              </SelectTrigger>
+              <SelectContent>
+                {ACADEMIC_YEARS.map((y) => (
+                  <SelectItem key={y.value} value={y.value}>
+                    {y.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
 
           {/* Step 2: Exam type */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground">٢. نوع الامتحان</label>
-            <Select value={examType} onValueChange={v => { setExamType(v); setExams([]); setSelectedExam(null); setRankings([]); }} disabled={!year}>
-              <SelectTrigger className="h-11 disabled:opacity-50"><SelectValue placeholder="اختر النوع..."/></SelectTrigger>
+            <label className="text-xs font-semibold text-muted-foreground">
+              ٢. نوع الامتحان
+            </label>
+            <Select
+              value={examType}
+              onValueChange={(v) => {
+                setExamType(v);
+                setExams([]);
+                setSectionKey("");
+                setSelectedExam(null);
+                setRankings([]);
+              }}
+              disabled={!year}
+            >
+              <SelectTrigger className="h-11 disabled:opacity-50">
+                <SelectValue placeholder="اختر النوع..." />
+              </SelectTrigger>
               <SelectContent>
-                <SelectItem value="electronic"><div className="flex items-center gap-2"><Monitor className="h-4 w-4 text-blue-500"/>امتحانات إلكترونية</div></SelectItem>
-                <SelectItem value="paper"><div className="flex items-center gap-2"><ClipboardList className="h-4 w-4 text-orange-500"/>امتحانات ورقية</div></SelectItem>
+                <SelectItem value="electronic">
+                  <div className="flex items-center gap-2">
+                    <Monitor className="h-4 w-4 text-blue-500" />
+                    امتحانات إلكترونية
+                  </div>
+                </SelectItem>
+                <SelectItem value="paper">
+                  <div className="flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 text-orange-500" />
+                    امتحانات ورقية
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Step 3: Exam name */}
+          {/* Step 3 (ورقي فقط): القسم / الفولدر */}
+          {examType === "paper" && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">
+                ٣. القسم
+              </label>
+              <Select
+                value={sectionKey}
+                onValueChange={(v) => {
+                  setSectionKey(v);
+                  setSelectedExam(null);
+                  setRankings([]);
+                }}
+                disabled={loadingExams || sections.length === 0}
+              >
+                <SelectTrigger className="h-11 disabled:opacity-50">
+                  <SelectValue
+                    placeholder={
+                      loadingExams
+                        ? "جاري التحميل..."
+                        : sections.length === 0
+                        ? "لا توجد أقسام"
+                        : "اختر القسم..."
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {sections.map((sec) => (
+                    <SelectItem key={sec.key} value={sec.key}>
+                      <div className="flex items-center gap-2">
+                        <Folder className="h-4 w-4 text-orange-500" />
+                        {sec.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Step: Exam — القيمة هي معرّف الامتحان الفريد (id) وليس اسمه */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground">٣. اسم الامتحان</label>
+            <label className="text-xs font-semibold text-muted-foreground">
+              {examType === "paper" ? "٤" : "٣"}. اسم الامتحان
+            </label>
             <Select
-              value={selectedExam?.title || ''}
-              onValueChange={v => setSelectedExam(exams.find(e => e.title === v) || null)}
-              disabled={!examType || loadingExams || exams.length === 0}
+              value={selectedExam?.id || ""}
+              onValueChange={(v) =>
+                setSelectedExam(visibleExams.find((e) => e.id === v) || null)
+              }
+              disabled={
+                !examType ||
+                loadingExams ||
+                (examType === "paper" && !sectionKey) ||
+                visibleExams.length === 0
+              }
             >
               <SelectTrigger className="h-11 disabled:opacity-50">
-                <SelectValue placeholder={loadingExams ? 'جاري التحميل...' : exams.length === 0 && examType ? 'لا توجد امتحانات' : 'اختر الامتحان...'}/>
+                <SelectValue
+                  placeholder={
+                    loadingExams
+                      ? "جاري التحميل..."
+                      : examType === "paper" && !sectionKey
+                      ? "اختر القسم أولاً"
+                      : visibleExams.length === 0 && examType
+                      ? "لا توجد امتحانات"
+                      : "اختر الامتحان..."
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {exams.map(e => <SelectItem key={e.title} value={e.title}>{e.title}{e.maxScore > 0 ? ` (${e.maxScore} درجة)` : ''}</SelectItem>)}
+                {visibleExams.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {examLabel(e)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -129,15 +323,27 @@ export default function RankingsPage() {
         {/* Empty state */}
         {!selectedExam && (
           <div className="text-center py-16 bg-card border rounded-2xl border-dashed">
-            <Trophy className="h-14 w-14 text-muted-foreground mx-auto mb-4 opacity-30"/>
+            <Trophy className="h-14 w-14 text-muted-foreground mx-auto mb-4 opacity-30" />
             <h3 className="text-lg font-bold text-muted-foreground">
-              {!year ? 'اختر المرحلة الدراسية' : !examType ? 'اختر نوع الامتحان' : 'اختر اسم الامتحان'}
+              {!year
+                ? "اختر المرحلة الدراسية"
+                : !examType
+                ? "اختر نوع الامتحان"
+                : examType === "paper" && !sectionKey
+                ? "اختر القسم"
+                : "اختر اسم الامتحان"}
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">لعرض ترتيب الطلاب</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              لعرض ترتيب الطلاب
+            </p>
           </div>
         )}
 
-        {loading && <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>}
+        {loading && (
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
 
         {/* Rankings */}
         {!loading && selectedExam && rankings.length > 0 && (
@@ -170,9 +376,17 @@ export default function RankingsPage() {
             <Card className="border shadow-sm overflow-hidden">
               <div className="px-4 py-3 bg-muted/30 border-b flex items-center gap-3 flex-wrap">
                 <span className="font-bold">{selectedExam.title}</span>
-                <Badge variant={examType==='electronic'?'default':'secondary'}>{examType==='electronic'?'إلكتروني':'ورقي'}</Badge>
-                {maxScore > 0 && <Badge variant="outline">الدرجة الكاملة: {maxScore}</Badge>}
-                <Badge variant="outline" className="mr-auto">{rankings.length} طالب — {enteredRankings.length} أدّوا</Badge>
+                <Badge
+                  variant={examType === "electronic" ? "default" : "secondary"}
+                >
+                  {examType === "electronic" ? "إلكتروني" : "ورقي"}
+                </Badge>
+                {maxScore > 0 && (
+                  <Badge variant="outline">الدرجة الكاملة: {maxScore}</Badge>
+                )}
+                <Badge variant="outline" className="mr-auto">
+                  {rankings.length} طالب — {enteredRankings.length} أدّوا
+                </Badge>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-right">
@@ -187,32 +401,79 @@ export default function RankingsPage() {
                   </thead>
                   <tbody className="divide-y">
                     {rankings.map((r, i) => (
-                      <tr key={r.student._id} className={`hover:bg-muted/20 transition-colors ${
-                        !r.entered ? 'opacity-50' :
-                        r.rank===1 ? 'bg-yellow-50/30' :
-                        r.rank===2 ? 'bg-slate-50/20' :
-                        r.rank===3 ? 'bg-orange-50/20' : ''
-                      }`}>
+                      <tr
+                        key={r.student._id}
+                        className={`hover:bg-muted/20 transition-colors ${
+                          !r.entered
+                            ? "opacity-50"
+                            : r.rank === 1
+                            ? "bg-yellow-50/30"
+                            : r.rank === 2
+                            ? "bg-slate-50/20"
+                            : r.rank === 3
+                            ? "bg-orange-50/20"
+                            : ""
+                        }`}
+                      >
                         <td className="px-4 py-3">
-                          {r.rank ? <div className="flex items-center justify-center w-8"><RankIcon rank={r.rank}/></div> : <span className="text-muted-foreground text-xs">—</span>}
+                          {r.rank ? (
+                            <div className="flex items-center justify-center w-8">
+                              <RankIcon rank={r.rank} />
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              —
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <p className="font-bold">{r.student.name}</p>
-                          {r.student.group?.name && <p className="text-xs text-muted-foreground">{r.student.group.name}</p>}
+                          {r.student.group?.name && (
+                            <p className="text-xs text-muted-foreground">
+                              {r.student.group.name}
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-3">
-                          {r.entered
-                            ? <span className="text-lg font-black">{r.score}</span>
-                            : <span className="text-muted-foreground text-xs">لم يؤد</span>}
+                          {r.entered ? (
+                            <span className="text-lg font-black">
+                              {r.score}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              لم يؤد
+                            </span>
+                          )}
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{maxScore || r.maxScore || '—'}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">
+                          {maxScore || r.maxScore || "—"}
+                        </td>
                         <td className="px-4 py-3">
                           {r.entered && (
                             <div className="flex items-center gap-2">
                               <div className="w-14 bg-muted rounded-full h-1.5">
-                                <div className={`h-1.5 rounded-full ${r.percentage>=70?'bg-green-500':r.percentage>=50?'bg-yellow-500':'bg-red-400'}`} style={{width:`${r.percentage}%`}}/>
+                                <div
+                                  className={`h-1.5 rounded-full ${
+                                    r.percentage >= 70
+                                      ? "bg-green-500"
+                                      : r.percentage >= 50
+                                      ? "bg-yellow-500"
+                                      : "bg-red-400"
+                                  }`}
+                                  style={{ width: `${r.percentage}%` }}
+                                />
                               </div>
-                              <span className={`font-bold text-xs ${r.percentage>=70?'text-green-600':r.percentage>=50?'text-yellow-600':'text-red-500'}`}>{r.percentage}%</span>
+                              <span
+                                className={`font-bold text-xs ${
+                                  r.percentage >= 70
+                                    ? "text-green-600"
+                                    : r.percentage >= 50
+                                    ? "text-yellow-600"
+                                    : "text-red-500"
+                                }`}
+                              >
+                                {r.percentage}%
+                              </span>
                             </div>
                           )}
                         </td>
