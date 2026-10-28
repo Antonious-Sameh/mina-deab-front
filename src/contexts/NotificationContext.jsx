@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
-import { studentAPI } from '@/api/services';
+import { notesAPI } from '@/api/services';
 
 const NotificationContext = createContext({ unreadCount: 0, refresh: () => {} });
 
@@ -9,18 +9,26 @@ export function NotificationProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const intervalRef = useRef(null);
 
+  // Depend on the user's identity (id + role), not the whole `user` object:
+  // AuthContext replaces the object (cached user -> fresh /me result, avatar
+  // updates, ...) without the identity changing, which used to re-run the
+  // effect below and fire a redundant request each time.
+  const userId   = user?._id;
+  const userRole = user?.role;
+
   const fetchCount = useCallback(async () => {
-    if (!user || user.role !== 'student') { setUnreadCount(0); return; }
+    if (!userId || userRole !== 'student') { setUnreadCount(0); return; }
     try {
-      const data = await studentAPI.notes();
+      // Lightweight endpoint: returns counts only, not the full notes list.
+      const data = await notesAPI.unreadCount();
       setUnreadCount(data.unreadCount || 0);
     } catch {
       // silent fail
     }
-  }, [user]);
+  }, [userId, userRole]);
 
   useEffect(() => {
-    if (!user || user.role !== 'student') { setUnreadCount(0); return; }
+    if (!userId || userRole !== 'student') { setUnreadCount(0); return; }
 
     const start = () => {
       clearInterval(intervalRef.current);
@@ -45,7 +53,7 @@ export function NotificationProvider({ children }) {
       stop();
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [user, fetchCount]);
+  }, [userId, userRole, fetchCount]);
 
   const contextValue = useMemo(
     () => ({ unreadCount, refresh: fetchCount }),
